@@ -359,13 +359,13 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&cloud){cle
 
 // ---------- Supabase (installed app / website): account, sync between devices, leaderboard ----------
 // The anon key is public by design; every table is protected by row-level security (see supabase/schema.sql).
-const SB_URL='',SB_KEY='';
-let sb=null,sbUser=null,profile=null,sbChan=null;
+const SB_URL='https://ezbpjzgvvvrdmjdljphf.supabase.co',SB_KEY='sb_publishable_5DK_a9DhoPMpTG9rU6cMDA_BkvIzK5D';
+let sb=null,sbUser=null,profile=null,sbChan=null,acMode='in';
 const sbq=async q=>{const {data,error}=await q;if(error)throw error;return data};
 function sbInit(){
   if(!SB_URL||location.hostname.endsWith('claude.ai')||location.protocol==='file:')return;
   const sc=document.createElement('script');
-  sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js';
+  sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js';
   sc.onload=async()=>{
     sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
     const {data:{session}}=await sb.auth.getSession();
@@ -451,10 +451,11 @@ function renderAccount(){
     <label>Имя в рейтинге<input id="acName" value="${esc(profile?.username||'')}" maxlength="24"></label>
     <label style="display:flex;gap:8px;align-items:center;color:var(--txt)"><input id="acPub" type="checkbox" style="width:auto" ${profile?.public!==false?'checked':''}>Показывать меня в таблице лидеров</label>
     <div class="row"><button class="btn-a" onclick="saveProfile()">Сохранить профиль</button><button onclick="sbOut()">Выйти</button></div>`
-  :`<div class="sm mut" style="margin-bottom:8px">Войди, чтобы данные были на всех устройствах и чтобы соревноваться с друзьями в таблице лидеров.</div>
-    <label>Почта<input id="acEmail" type="email" autocomplete="email"></label>
-    <label>Пароль<input id="acPass" type="password" autocomplete="current-password" minlength="6"></label>
-    <div class="row"><button class="btn-a" onclick="sbAuth('in')">Войти</button><button onclick="sbAuth('up')">Создать аккаунт</button></div>`;
+  :`<div class="sm mut" style="margin-bottom:8px">${acMode==='up'?'Новый аккаунт: данные будут на всех устройствах, и ты появишься в таблице лидеров. iPhone предложит надёжный пароль и сохранит его.':'Войди, чтобы данные были на всех устройствах и чтобы соревноваться с друзьями. На iPhone пароль подставится по Face ID.'}</div>
+    <form onsubmit="event.preventDefault();sbAuth(acMode)">
+    <label>Почта<input id="acEmail" type="email" name="email" autocomplete="username" inputmode="email" autocapitalize="off" required></label>
+    <label>Пароль<input id="acPass" type="password" name="password" autocomplete="${acMode==='up'?'new-password':'current-password'}" minlength="6" required></label>
+    <div class="row"><button class="btn-a" type="submit">${acMode==='up'?'Создать аккаунт':'Войти'}</button><button type="button" onclick="acMode=acMode==='up'?'in':'up';renderAccount()">${acMode==='up'?'У меня есть аккаунт':'Создать аккаунт'}</button></div></form>`;
 }
 
 // leaderboard: each user publishes only their best set per exercise + weekly volume
