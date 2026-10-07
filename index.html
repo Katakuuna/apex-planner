@@ -182,6 +182,14 @@ main.soft{animation:fadeBg .25s ease}
 .ov .tr::before{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--hair)}
 .ov .tr i{position:absolute;top:0;bottom:0;border-radius:4px}.ov .tr i.g{background:var(--ok)}.ov .tr i.b{background:var(--acc2)}
 .enter .ov .tr i{animation:fill .9s .2s var(--ease) backwards}
+.lb{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px}
+.lb li{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:#ffffff06;box-shadow:inset 0 0 0 .5px var(--hair-soft)}
+.lb li.me{background:linear-gradient(90deg,#9b1b3066,#9b1b301a);box-shadow:inset 0 0 0 1px var(--hair)}
+.lb .md{width:28px;text-align:center;font-size:18px}.lb .rk{font-size:13px;color:var(--mut);font-weight:600}
+.lb .nm{flex:1;min-width:0;display:flex;flex-direction:column;overflow-wrap:anywhere}.lb .nm small{font-size:12px;color:var(--mut)}
+.lb b{font-variant-numeric:tabular-nums;font-size:17px;white-space:nowrap}.lb b small{font-size:12px;color:var(--mut);font-weight:400}
+.enter .lb li{animation:rise .5s var(--ease) backwards}.enter .lb li:nth-child(2){animation-delay:.05s}.enter .lb li:nth-child(3){animation-delay:.1s}.enter .lb li:nth-child(n+4){animation-delay:.15s}
+.seg.mini button{font-size:12px;padding:5px 10px}
 .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 12px;margin-bottom:6px}
 </style>
 </head>
@@ -242,7 +250,9 @@ main.soft{animation:fadeBg .25s ease}
   <div class="row"><label>Поддержка (TDEE), ккал<input data-s="maint" inputmode="numeric"></label><label>Вода, мл<input data-s="water" inputmode="numeric"></label></div>
   <div class="lbl">Тело и зал</div>
   <div class="row"><label>Целевой вес, кг<input data-s="goalWeight" inputmode="decimal"></label><label>Таймер отдыха, сек<input data-s="rest" inputmode="numeric"></label></div>
-  <div class="lbl" style="margin-top:6px">Данные (хранятся только в этом браузере)</div>
+  <div class="lbl" style="margin-top:6px">Аккаунт</div>
+  <div id="acct" hidden></div>
+  <div class="lbl" style="margin-top:12px">Данные и бэкап</div>
   <div class="row"><button onclick="exportData()">Экспорт JSON</button><button onclick="importFile.click()">Импорт JSON</button></div>
   <input type="file" id="importFile" accept=".json,application/json" hidden onchange="importData(this)">
   <div class="row" style="margin-top:8px"><button onclick="resetAll()" style="color:var(--acc2)">Стереть всё</button></div>
@@ -300,6 +310,8 @@ function applyShard(id,v){
   Object.assign(S[k],v||{});
 }
 let cloud=null,written={},syncing=false,dirty=false,syncT;
+// stable stringify: Postgres jsonb reorders keys, so compare documents by sorted keys
+const canon=v=>JSON.stringify(v,(k,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.entries(x).sort(([a],[b])=>a<b?-1:a>b?1:0)):x);
 const setSync=t=>{const e=$('#sync');e.hidden=!t;e.textContent=t};
 async function cloudInit(){
   if(!window.claude?.use)return;
@@ -310,16 +322,16 @@ async function cloudInit(){
     const col=db.collection('data/users/'+id),snap=await col.get();
     if(!snap.empty){
       S=norm({ui:S.ui});
-      snap.docs.forEach(d=>{const v=d.data().v;applyShard(d.id,v);written[d.id]=JSON.stringify(v)});
+      snap.docs.forEach(d=>{const v=d.data().v;applyShard(d.id,v);written[d.id]=canon(v)});
       localSave();
     }
-    cloud=col;
+    cloud={set:(id,v)=>col.doc(id).set({v}),del:id=>col.doc(id).delete()};
     if(snap.empty)await pushCloud();
     col.onSnapshot(q=>{
       if(q.metadata.hasPendingWrites)return;
       let ch=false;
       for(const c of q.docChanges()){
-        const v=c.type==='removed'?undefined:c.doc.data().v,j=v===undefined?undefined:JSON.stringify(v);
+        const v=c.type==='removed'?undefined:c.doc.data().v,j=v===undefined?undefined:canon(v);
         if(written[c.doc.id]===j)continue;
         applyShard(c.doc.id,v);if(j===undefined)delete written[c.doc.id];else written[c.doc.id]=j;ch=true;
       }
@@ -335,15 +347,165 @@ async function pushCloud(){
   try{
     do{
       dirty=false;const sh=shards(S);
-      for(const [id,v] of Object.entries(sh)){const j=JSON.stringify(v);if(written[id]===j)continue;written[id]=j;
-        try{await cloud.doc(id).set({v})}catch(e){delete written[id];throw e}}
-      for(const id of Object.keys(written))if(!(id in sh)){await cloud.doc(id).delete();delete written[id]}
+      for(const [id,v] of Object.entries(sh)){const j=canon(v);if(written[id]===j)continue;written[id]=j;
+        try{await cloud.set(id,v)}catch(e){delete written[id];throw e}}
+      for(const id of Object.keys(written))if(!(id in sh)){await cloud.del(id);delete written[id]}
     }while(dirty);
-    setSync('☁︎ Синхронизировано');
-  }catch(e){setSync('Ошибка сохранения');toast('Не удалось сохранить в облако ('+(e.code||e.message)+'). Данные остались на этом устройстве.')}
+    S.ui.pending=false;localSave();setSync('☁︎ Синхронизировано');publishLifts();
+  }catch(e){S.ui.pending=true;localSave();setSync('Ошибка сохранения');toast('Не удалось сохранить в облако ('+(e.code||e.message)+'). Данные остались на этом устройстве.')}
   finally{syncing=false}
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&cloud){clearTimeout(syncT);pushCloud()}});
+
+// ---------- Supabase (installed app / website): account, sync between devices, leaderboard ----------
+// The anon key is public by design; every table is protected by row-level security (see supabase/schema.sql).
+const SB_URL='',SB_KEY='';
+let sb=null,sbUser=null,profile=null,sbChan=null;
+const sbq=async q=>{const {data,error}=await q;if(error)throw error;return data};
+function sbInit(){
+  if(!SB_URL||location.hostname.endsWith('claude.ai')||location.protocol==='file:')return;
+  const sc=document.createElement('script');
+  sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js';
+  sc.onload=async()=>{
+    sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+    const {data:{session}}=await sb.auth.getSession();
+    if(session)await sbStart(session.user);
+    renderAccount();if(tab==='gym')render();
+  };
+  sc.onerror=()=>setSync('Офлайн');
+  document.head.appendChild(sc);
+}
+function mergeShard(id,v){ // first login on a device: keep local entries, cloud wins on the same date/id
+  const [k,m]=id.split('~');if(!(k in DEF)||k==='ui')return;
+  if(m||k==='foods'){S[k]={...S[k],...v};return}
+  if(k==='settings'){S.settings={...S.settings,...v};return}
+  if(Array.isArray(v)){const ids=new Set(v.map(x=>x.id));S[k]=[...v,...(S[k]||[]).filter(x=>!ids.has(x.id))];return}
+  S[k]=v;
+}
+async function sbStart(user){
+  sbUser=user;setSync('Синхронизация…');
+  try{
+    const rows=await sbq(sb.from('user_state').select('doc,data').eq('user_id',user.id));
+    const first=S.ui.syncedUser!==user.id;
+    if(rows.length){
+      if(first||S.ui.pending)rows.forEach(r=>mergeShard(r.doc,r.data));
+      else{S=norm({ui:S.ui});rows.forEach(r=>applyShard(r.doc,r.data))}
+    }
+    written={};rows.forEach(r=>written[r.doc]=canon(r.data));
+    S.ui.syncedUser=user.id;localSave();
+    cloud={
+      set:(doc,data)=>sbq(sb.from('user_state').upsert({user_id:user.id,doc,data,updated_at:new Date().toISOString()})),
+      del:doc=>sbq(sb.from('user_state').delete().eq('user_id',user.id).eq('doc',doc)),
+    };
+    await loadProfile();
+    await pushCloud();
+    sbChan=sb.channel('state-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'user_state',filter:'user_id=eq.'+user.id},p=>{
+      const doc=p.new?.doc||p.old?.doc,v=p.eventType==='DELETE'?undefined:p.new.data,j=v===undefined?undefined:canon(v);
+      if(!doc||written[doc]===j)return;
+      applyShard(doc,v);if(j===undefined)delete written[doc];else written[doc]=j;
+      localSave();if(!document.activeElement?.matches('input,textarea,select'))render();
+    }).subscribe();
+    setSync('☁︎ Синхронизировано');render();
+  }catch(e){setSync('Без синхронизации');toast('Облако недоступно: '+e.message)}
+}
+async function loadProfile(){
+  profile=(await sbq(sb.from('profiles').select('*').eq('id',sbUser.id)))[0];
+  if(!profile){
+    const base=(sbUser.email||'user').split('@')[0].replace(/[^\w.-]/g,'').slice(0,18)||'user';
+    for(const name of [base,base+Math.floor(Math.random()*900+100)]){
+      try{profile=(await sbq(sb.from('profiles').insert({id:sbUser.id,username:name}).select()))[0];break}catch(e){if(e.code!=='23505')throw e}
+    }
+  }
+}
+async function sbAuth(mode){
+  const email=$('#acEmail').value.trim(),password=$('#acPass').value;
+  if(!email||password.length<6)return toast('Введи почту и пароль (минимум 6 символов)');
+  try{
+    if(mode==='up'){
+      const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});if(error)throw error;
+      if(!data.session)return toast('Мы отправили письмо — подтверди почту и затем войди');
+      await sbStart(data.user);
+    }else{
+      const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;
+      await sbStart(data.user);
+    }
+    renderAccount();toast('Готово, ты в аккаунте');
+  }catch(e){toast(e.message==='Invalid login credentials'?'Неверная почта или пароль':'Ошибка: '+e.message)}
+}
+async function sbOut(){
+  if(!await ask('Выйти из аккаунта? Данные останутся на этом устройстве.'))return;
+  await pushCloud();sbChan?.unsubscribe();await sb.auth.signOut();
+  sbUser=profile=cloud=null;written={};S.ui.syncedUser=null;localSave();setSync('');renderAccount();render();
+}
+async function saveProfile(){
+  const username=$('#acName').value.trim(),pub=$('#acPub').checked;
+  if(!/^[\w.\- а-яёА-ЯЁ]{2,24}$/.test(username))return toast('Имя: 2–24 символа, буквы, цифры, точка, дефис');
+  try{profile=(await sbq(sb.from('profiles').update({username,public:pub,updated_at:new Date().toISOString()}).eq('id',sbUser.id).select()))[0];toast('Профиль сохранён');lbAt=0;if(tab==='gym')render()}
+  catch(e){toast(e.code==='23505'?'Это имя уже занято':'Ошибка: '+e.message)}
+}
+function renderAccount(){
+  const el=$('#acct');if(!el)return;
+  if(!sb){el.hidden=true;return}
+  el.hidden=false;
+  el.innerHTML=sbUser?`<div class="sm mut" style="margin-bottom:8px">Ты вошёл как <b style="color:var(--txt)">${esc(sbUser.email)}</b>. Данные синхронизируются между всеми устройствами.</div>
+    <label>Имя в рейтинге<input id="acName" value="${esc(profile?.username||'')}" maxlength="24"></label>
+    <label style="display:flex;gap:8px;align-items:center;color:var(--txt)"><input id="acPub" type="checkbox" style="width:auto" ${profile?.public!==false?'checked':''}>Показывать меня в таблице лидеров</label>
+    <div class="row"><button class="btn-a" onclick="saveProfile()">Сохранить профиль</button><button onclick="sbOut()">Выйти</button></div>`
+  :`<div class="sm mut" style="margin-bottom:8px">Войди, чтобы данные были на всех устройствах и чтобы соревноваться с друзьями в таблице лидеров.</div>
+    <label>Почта<input id="acEmail" type="email" autocomplete="email"></label>
+    <label>Пароль<input id="acPass" type="password" autocomplete="current-password" minlength="6"></label>
+    <div class="row"><button class="btn-a" onclick="sbAuth('in')">Войти</button><button onclick="sbAuth('up')">Создать аккаунт</button></div>`;
+}
+
+// leaderboard: each user publishes only their best set per exercise + weekly volume
+async function publishLifts(){
+  if(!sbUser||!profile)return;
+  const best={};
+  for(const [d,a] of Object.entries(S.workouts))for(const e of a)for(const st of working(e.sets)){
+    const k=low(e.name),v=e1(st);if(!best[k]||v>best[k].e1rm)best[k]={exercise:k,name:e.name.trim(),e1rm:r1(v),weight:num(st.w),reps:num(st.r),achieved_on:d};
+  }
+  const bw=lastWeight()?.kg??null,rows=Object.values(best).map(r=>({...r,user_id:sbUser.id,bodyweight:bw})),wk0=weekDays(today())[0];
+  const prof={bodyweight:bw,week_start:wk0,week_volume:Math.round(sum(weekDays(today()).map(dayVolume)))};
+  const sig=canon({rows,prof});if(sig===S.ui.pubSig)return;
+  try{
+    if(rows.length)await sbq(sb.from('lifts').upsert(rows,{onConflict:'user_id,exercise'}));
+    await sbq(sb.from('profiles').update(prof).eq('id',sbUser.id));
+    S.ui.pubSig=sig;localSave();lbAt=0;
+  }catch(e){console.warn('leaderboard publish failed',e)}
+}
+let LB={ex:null,rel:false,rows:[],exs:[],week:[]},lbAt=0,lbBusy=false;
+async function lbLoad(force){
+  if(!sbUser||lbBusy||(!force&&Date.now()-lbAt<30000))return;
+  lbBusy=true;
+  try{
+    const all=await sbq(sb.from('lifts').select('exercise,name').limit(2000));
+    const cnt={};all.forEach(r=>{(cnt[r.exercise]||={n:0,name:r.name}).n++});
+    LB.exs=Object.entries(cnt).sort((a,b)=>b[1].n-a[1].n).slice(0,12).map(([k,v])=>({k,name:v.name,n:v.n}));
+    if(!LB.exs.some(x=>x.k===LB.ex))LB.ex=LB.exs[0]?.k||null;
+    LB.rows=LB.ex?await sbq(sb.from('lifts').select('user_id,e1rm,weight,reps,bodyweight,achieved_on,profiles!inner(username,public)').eq('exercise',LB.ex).eq('profiles.public',true).order('e1rm',{ascending:false}).limit(50)):[];
+    LB.week=await sbq(sb.from('profiles').select('id,username,week_volume').eq('public',true).eq('week_start',weekDays(today())[0]).gt('week_volume',0).order('week_volume',{ascending:false}).limit(20));
+    lbAt=Date.now();
+  }catch(e){LB.err=e.message}
+  lbBusy=false;
+  const c=$('#lb');if(c){c.outerHTML=lbCard();const n=$('#lb');n.classList.add('enter');setTimeout(()=>n.classList.remove('enter'),1300)}
+}
+function lbPick(k){LB.ex=k;lbLoad(true)}
+function lbMode(rel){LB.rel=rel;const c=$('#lb');if(c)c.outerHTML=lbCard()}
+function lbCard(){
+  if(!sb)return '';
+  if(!sbUser)return `<div class="card hot" id="lb"><h2>🏆 Таблица лидеров</h2><p class="sm mut" style="margin-bottom:12px">Соревнуйся с друзьями по жиму, приседу, тяге и объёму за неделю. Нужен аккаунт — он же синхронизирует данные между телефоном и компьютером.</p><button class="btn-a" onclick="openSettings()">Войти или создать аккаунт</button></div>`;
+  if(!lbAt){lbLoad();return '<div class="card hot" id="lb"><h2>🏆 Таблица лидеров</h2><p class="empty">Загружаю…</p></div>'}
+  const rows=[...LB.rows].map(r=>({...r,score:LB.rel?(r.bodyweight?r.e1rm/r.bodyweight:0):r.e1rm})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score);
+  const medal=i=>['🥇','🥈','🥉'][i]||`<span class="rk">${i+1}</span>`;
+  return `<div class="card hot" id="lb"><h2>🏆 Таблица лидеров<span class="sp"></span><button class="ico" onclick="lbLoad(true)" aria-label="Обновить">↻</button></h2>
+    ${LB.exs.length?`<div class="seg">${LB.exs.map(x=>`<button class="${x.k===LB.ex?'on':''}" onclick="lbPick(this.dataset.k)" data-k="${esc(x.k)}">${esc(x.name)} <span class="mut">${x.n}</span></button>`).join('')}</div>
+    <div class="seg mini"><button class="${LB.rel?'':'on'}" onclick="lbMode(false)">Абсолютный 1ПМ</button><button class="${LB.rel?'on':''}" onclick="lbMode(true)">Относительно веса тела</button></div>
+    <ol class="lb">${rows.map((r,i)=>`<li class="${r.user_id===sbUser.id?'me':''}"><span class="md">${medal(i)}</span><span class="nm">${esc(r.profiles.username)}${r.user_id===sbUser.id?' <span class="chip">ты</span>':''}<small>${r.weight} кг × ${r.reps} · ${fmtDay(r.achieved_on,{day:'numeric',month:'short'})}</small></span><b>${LB.rel?r1(r.score)+'<small> × вес</small>':r1(r.e1rm)+'<small> кг</small>'}</b></li>`).join('')||'<p class="empty">Для относительного рейтинга участникам нужно записать вес тела.</p>'}</ol>`
+    :'<p class="empty">Пока никто не записал подходы. Отметь подход во вкладке «Зал» — и ты первый в таблице.</p>'}
+    <div class="lbl" style="margin-top:18px">Объём за эту неделю</div>
+    ${LB.week.length?`<ol class="lb">${LB.week.map((r,i)=>`<li class="${r.id===sbUser.id?'me':''}"><span class="md">${medal(i)}</span><span class="nm">${esc(r.username)}</span><b>${fmt(r.week_volume)}<small> кг</small></b></li>`).join('')}</ol>`:'<p class="empty">На этой неделе ещё никто не тренировался.</p>'}
+    <p class="sm mut" style="margin-top:12px">Рейтинг по расчётному 1ПМ (формула Эпли) из твоего лучшего рабочего подхода. Скрыть себя можно в ⚙︎.</p></div>`;
+}
 
 // ---------- navigation ----------
 const TITLES={home:'Главная',plan:'Планер',gym:'Зал',body:'Тело',food:'Питание'};
@@ -624,6 +786,7 @@ gym(){
     ${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:r1(h.e1)})))}
     <div class="lbl" style="margin-top:16px">Объём, кг</div>${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:h.vol})))}`
     :'<p class="empty">Завершите хотя бы один подход — здесь появятся графики 1ПМ и объёма.</p>'}</div>
+  ${lbCard()}
   ${recent.length?`<div class="card"><h2>Последние тренировки</h2><div class="list">${recent.map(d=>`<div class="item" onclick="goDay('${d}')" style="cursor:pointer"><div class="t">${fmtDay(d,{weekday:'short',day:'numeric',month:'long'})}<div class="sm mut">${S.workouts[d].map(e=>esc(e.name)).join(', ')}</div></div><span class="sm">${fmt(dayVolume(d))} кг</span></div>`).join('')}</div></div>`:''}`;
 },
 body(){
@@ -672,11 +835,11 @@ food(){
 
 function weightCard(){
   const st=S.settings,ws=weightStats(),w=weights().slice(-60);
-  return `  <div class="card hot"><h2>Вес тела<span class="sp"></span><span class="chip g">Цель: \${st.goalWeight} кг</span></h2>
-    <div class="row" style="margin-bottom:14px"><input id="wIn" inputmode="decimal" placeholder="Вес за \${fmtDay(day,{day:'numeric',month:'short'})}, кг" value="\${S.weight[day]??''}" onkeydown="event.key==='Enter'&&setWeight()"><button class="btn-a fit" onclick="setWeight()">Сохранить</button>\${S.weight[day]?'<button class="fit" onclick="delWeight()">Удалить</button>':''}</div>
-    \${w.length?\`<div class="big">\${w.at(-1)[1]} <small>кг</small></div>\`:''}
-    \${ws?\`<div class="sm" style="margin:4px 0 10px"><b class="\${(ws.weekly>0)===ws.bulk?'up':'down'}">\${ws.weekly>0?'+':''}\${r1(ws.weekly)} кг/нед (\${r1(ws.pw)}%)</b> — \${ws.zone}\${ws.eta?\` · до цели ≈ \${ws.eta} нед\`:''}<div class="mut">Ориентир: \${ws.bulk?'набор 0.25–0.5% массы/нед':'сушка 0.5–1% массы/нед'}</div></div>\`:''}
-    \${line(w.map(([d,v])=>({l:fmtDay(d,{day:'numeric',month:'short'})+\` (\${v} кг)\`,v})),{goal:num(st.goalWeight),unit:' кг'})}</div>`;
+  return `  <div class="card hot"><h2>Вес тела<span class="sp"></span><span class="chip g">Цель: ${st.goalWeight} кг</span></h2>
+    <div class="row" style="margin-bottom:14px"><input id="wIn" inputmode="decimal" placeholder="Вес за ${fmtDay(day,{day:'numeric',month:'short'})}, кг" value="${S.weight[day]??''}" onkeydown="event.key==='Enter'&&setWeight()"><button class="btn-a fit" onclick="setWeight()">Сохранить</button>${S.weight[day]?'<button class="fit" onclick="delWeight()">Удалить</button>':''}</div>
+    ${w.length?`<div class="big">${w.at(-1)[1]} <small>кг</small></div>`:''}
+    ${ws?`<div class="sm" style="margin:4px 0 10px"><b class="${(ws.weekly>0)===ws.bulk?'up':'down'}">${ws.weekly>0?'+':''}${r1(ws.weekly)} кг/нед (${r1(ws.pw)}%)</b> — ${ws.zone}${ws.eta?` · до цели ≈ ${ws.eta} нед`:''}<div class="mut">Ориентир: ${ws.bulk?'набор 0.25–0.5% массы/нед':'сушка 0.5–1% массы/нед'}</div></div>`:''}
+    ${line(w.map(([d,v])=>({l:fmtDay(d,{day:'numeric',month:'short'})+` (${v} кг)`,v})),{goal:num(st.goalWeight),unit:' кг'})}</div>`;
 }
 
 // ---------- body measurements ----------
@@ -767,7 +930,7 @@ function calRender(){
 document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)d.close()}));
 
 // ---------- settings & data ----------
-function openSettings(){document.querySelectorAll('[data-s]').forEach(i=>{i.value=S.settings[i.dataset.s];i.onchange=()=>{S.settings[i.dataset.s]=num(i.value);commit()}});settings.showModal()}
+function openSettings(){renderAccount();document.querySelectorAll('[data-s]').forEach(i=>{i.value=S.settings[i.dataset.s];i.onchange=()=>{S.settings[i.dataset.s]=num(i.value);commit()}});settings.showModal()}
 async function exportData(){
   const data=JSON.stringify(S,null,1),filename=`apex-backup-${today()}.json`;
   const dl=window.claude?.use&&await claude.use('downloads');
@@ -784,7 +947,7 @@ async function importData(inp){
 async function resetAll(){if(await ask('Стереть ВСЕ данные на всех устройствах? Это необратимо — сначала лучше сделать экспорт.')){S=norm({});commit();settings.close()}}
 
 render();movePill(false);document.fonts?.ready.then(()=>movePill(false));
-cloudInit();
+cloudInit();sbInit();
 // installable app (PWA): offline cache; not available inside claude.ai
 if(location.protocol!=="file:"&&!location.hostname.endsWith("claude.ai")&&"serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
