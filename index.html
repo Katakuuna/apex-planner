@@ -17,7 +17,7 @@
   --spring:cubic-bezier(.3,1.5,.5,1);--spring-soft:cubic-bezier(.3,1.25,.45,1);--ease:cubic-bezier(.2,.8,.2,1);color-scheme:dark}
 *{box-sizing:border-box;margin:0}
 [hidden]{display:none!important}
-body{background:radial-gradient(800px 520px at 105% -5%,#4a1220 0,transparent 65%) fixed,radial-gradient(700px 500px at -10% 105%,#2e0c15 0,transparent 65%) fixed,var(--bg);color:var(--txt);font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:16px 16px calc(110px + env(safe-area-inset-bottom));min-height:100vh}
+body{background:radial-gradient(800px 520px at 105% -5%,#4a1220 0,transparent 65%) fixed,radial-gradient(700px 500px at -10% 105%,#2e0c15 0,transparent 65%) fixed,var(--bg);color:var(--txt);font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:calc(16px + env(safe-area-inset-top)) 16px calc(110px + env(safe-area-inset-bottom));min-height:100vh}
 header,main{max-width:860px;margin:0 auto}
 header{margin-bottom:16px}
 .top{display:flex;align-items:center;gap:8px}
@@ -115,7 +115,7 @@ nav button.on span{animation:labelIn .35s ease-out}
 @keyframes labelIn{from{opacity:0;filter:blur(3px)}}
 nav svg{width:18px;height:18px}
 @media(max-width:520px){nav button{padding:10px 14px}nav button span{display:none}nav button.on span{display:inline}}
-#rest{position:fixed;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:20;background:#1d1416e6;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:inset 0 0 0 .5px var(--hair),0 10px 40px #000c;border-radius:999px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:6px;animation:drop .5s var(--spring)}
+#rest{position:fixed;top:max(14px,calc(env(safe-area-inset-top) + 6px));left:50%;transform:translateX(-50%);z-index:20;background:#1d1416e6;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:inset 0 0 0 .5px var(--hair),0 10px 40px #000c;border-radius:999px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:6px;animation:drop .5s var(--spring)}
 @keyframes drop{from{opacity:0;translate:0 -24px;scale:.9}}
 #rest b{font-size:20px;font-variant-numeric:tabular-nums;min-width:56px;color:var(--acc2)}
 #rest button{padding:6px 10px;border-radius:999px;font-size:13px}
