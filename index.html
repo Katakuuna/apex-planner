@@ -190,6 +190,9 @@ main.soft{animation:fadeBg .25s ease}
 .lb b{font-variant-numeric:tabular-nums;font-size:17px;white-space:nowrap}.lb b small{font-size:12px;color:var(--mut);font-weight:400}
 .enter .lb li{animation:rise .5s var(--ease) backwards}.enter .lb li:nth-child(2){animation-delay:.05s}.enter .lb li:nth-child(3){animation-delay:.1s}.enter .lb li:nth-child(n+4){animation-delay:.15s}
 .seg.mini button{font-size:12px;padding:5px 10px}
+.pday{padding:12px;border-radius:14px;background:#ffffff06;box-shadow:inset 0 0 0 .5px var(--hair-soft);margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.chips .chip{display:inline-flex;align-items:center;gap:2px;padding:4px 4px 4px 10px;font-size:13px}.chips .x{font-size:16px;padding:0 4px}
 .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 12px;margin-bottom:6px}
 </style>
 </head>
@@ -239,6 +242,13 @@ main.soft{animation:fadeBg .25s ease}
   <p class="sm mut" style="margin-bottom:14px">Мерь утром натощак, лента без натяжения. Мышцы — по самому широкому месту в расслабленном виде, талию — по самому узкому. Пустое поле — без записи.</p>
   <div class="row"><button onclick="meas.close()">Отмена</button><button class="btn-a" onclick="saveMeas()">Сохранить</button></div>
 </dialog>
+<input type="file" id="progFile" accept=".txt,.md,.csv,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden onchange="progImport(this)">
+<dialog id="progTxt" aria-label="Вставить программу">
+  <h2>Вставь программу<span class="sp"></span><button class="x" onclick="progTxt.close()" aria-label="Закрыть">×</button></h2>
+  <textarea id="progTxtIn" style="min-height:220px" placeholder="День 1 — Грудь&#10;Жим штанги лёжа 4x8&#10;Разводка гантелей 3x12&#10;&#10;День 2 — Спина&#10;Подтягивания&#10;Тяга штанги в наклоне"></textarea>
+  <p class="sm mut" style="margin:8px 0 14px">Подойдёт текст из заметок, Word, Google Docs, PDF или ячейки из Excel. Каждое упражнение — на своей строке. Подходы и повторы можно оставить: приложение возьмёт только названия.</p>
+  <div class="row"><button onclick="progTxt.close()">Отмена</button><button class="btn-a" onclick="progFromText($('#progTxtIn').value);progTxt.close()">Разобрать</button></div>
+</dialog>
 <dialog id="ask"><form method="dialog"><p id="askT" style="margin-bottom:16px;line-height:1.5"></p><div class="row"><button value="no">Отмена</button><button value="ok" class="btn-a">Да</button></div></form></dialog>
 <div id="toast" hidden role="status"></div>
 
@@ -281,7 +291,7 @@ const low=s=>s.trim().toLowerCase();
 // ---------- state ----------
 const KEY='apex.v1';
 const DEF={settings:{kcal:2700,p:180,f:70,c:250,maint:2500,water:3000,goalWeight:82,rest:120},
-  goals:[],body:{},tasks:{},notes:{},habits:[],habitLog:{},workouts:{},food:{},foods:{},water:{},weight:{},ui:{}};
+  goals:[],body:{},program:null,progDay:{},tasks:{},notes:{},habits:[],habitLog:{},workouts:{},food:{},foods:{},water:{},weight:{},ui:{}};
 function norm(d){const s={...structuredClone(DEF),...d};s.settings={...DEF.settings,...d.settings};s.ui||={};return s}
 function load(){let d={};try{d=JSON.parse(localStorage.getItem(KEY))||{}}catch{}return norm(d)}
 let S=load(),tab=S.ui.tab||'home',day=today();
@@ -296,7 +306,7 @@ let toastT;function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=fa
 
 // ---------- cloud sync (only when opened as a claude.ai artifact) ----------
 // State is split into docs: one per key, date-keyed maps sharded by month (keeps each doc far below 256 KiB).
-const DATED=['tasks','notes','habitLog','workouts','food','water','weight','body'];
+const DATED=['tasks','notes','habitLog','workouts','food','water','weight','body','progDay'];
 function shards(s){
   const o={};
   for(const [k,v] of Object.entries(s)){if(k==='ui')continue;
@@ -774,6 +784,7 @@ gym(){
     <div class="card"><div class="lbl">Объём тренировки</div><div class="big">${fmt(vol)} <small>кг</small></div></div>
     <div class="card"><div class="lbl">Рабочих подходов</div><div class="big">${nSets}</div></div>
     <div class="card"><div class="lbl">Рекорды сегодня</div><div class="big ${prs?'down':''}">${prs}</div></div></div>
+  ${progCard()}
   <div class="card hot"><h2>Добавить упражнение</h2>
     <div class="row"><input id="exName" list="exList" placeholder="Название упражнения" onkeydown="event.key==='Enter'&&addEx()" style="flex:3 1 200px"><button class="btn-a fit" onclick="addEx()">Добавить</button></div>
     <datalist id="exList">${allEx().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
@@ -904,6 +915,117 @@ function figure(){
   <g stroke="#d98593" stroke-width="1" fill="none" opacity=".5">
     <path d="M260,118V236M226,148Q244,166 258,152M294,148Q276,166 262,152M240,190h40M242,210h36M228,232Q260,244 292,232M236,346q10,6 20,0M264,346q10,6 20,0M188,170q8,10 4,26M332,170q-8,10-4,26"/></g>
   ${[WM,...MEAS].map(lead).join('')}</svg>`;
+}
+
+// ---------- training program: import → days of exercise names → attach to weekday or date ----------
+const WDN=[[1,'Пн'],[2,'Вт'],[3,'Ср'],[4,'Чт'],[5,'Пт'],[6,'Сб'],[0,'Вс']];
+const WDRE=[[/понедельн|monday/i,1],[/вторник|tuesday/i,2],[/сред[аы]|wednesday/i,3],[/четверг|thursday/i,4],[/пятниц|friday/i,5],[/суббот|saturday/i,6],[/воскресен|sunday/i,0]];
+const wdOf=t=>{for(const [re,n] of WDRE)if(re.test(t))return n;return null};
+// ponytail: line-based heuristics; photos/handwriting need OCR or an LLM — send those to Claude to convert
+function parseProgram(text){
+  const days=[];let cur=null;
+  for(const raw of text.split(/\r?\n/)){
+    const l=raw.replace(/\t+/g,' | ').replace(/\s+/g,' ').trim();if(!l)continue;
+    const h=l.replace(/^#+\s*/,'').replace(/^[*_]+|[*_]+$/g,'').trim();
+    if(/^(неделя|week|блок|block|фаза|phase)\s*\d/i.test(h))continue; // multi-week section titles are not days
+    const head=/^#/.test(l)||/^(день|day|тренировка|workout)(?=[\s\d№#:.\-–—]|$)/i.test(h)||/^(понедельник|вторник|среда|четверг|пятница|суббота|воскресенье|monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(h)
+      ||(/:$/.test(h)&&!/\d/.test(h))||(/[A-ZА-ЯЁ]{3}/.test(h)&&h===h.toUpperCase()&&!/\d/.test(h));
+    if(head){cur={id:uid(),name:h.replace(/:$/,'').trim(),wd:wdOf(h),ex:[]};days.push(cur);continue}
+    const n=exName(l);if(!n)continue;
+    if(!cur){cur={id:uid(),name:'День 1',wd:null,ex:[]};days.push(cur)}
+    if(!cur.ex.some(e=>low(e)===low(n)))cur.ex.push(n);
+  }
+  return days.filter(d=>d.ex.length);
+}
+function exName(l){
+  let t=l.split(' | ')[0]
+    .replace(/^[-–—•*·▪●○◦>✓✔☐□]+\s*/,'').replace(/^[A-ZА-ЯЁ]\d+[.)]?\s+/,'').replace(/^\d{1,2}\s*[.)]\s*/,'')
+    .split(/\s+[-–—]\s+|:\s|\s*\(|\s+\d+\s*(?:[xх×*]|подход|сет|раз|по\s|sets?\b|reps?\b)/i)[0]
+    .replace(/[\s,;.:–—-]+$/,'').trim();
+  if(!/[a-zа-яё]{3}/i.test(t)||/^(упражнени|exercise|подход|sets?$|повтор|reps?$|вес$|отдых|rest|примечан|note|комментар)/i.test(t))return null;
+  return t[0].toUpperCase()+t.slice(1);
+}
+function loadScript(src){return new Promise((ok,no)=>{const sc=document.createElement('script');sc.src=src;sc.onload=ok;sc.onerror=()=>no(Error('нет связи с '+new URL(src).host));document.head.appendChild(sc)})}
+async function pdfText(f){
+  const v='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  if(!window.pdfjsLib){await loadScript(v+'pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc=v+'pdf.worker.min.js'}
+  const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise,out=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const rows=new Map();
+    for(const it of (await (await pdf.getPage(p)).getTextContent()).items){if(!it.str.trim())continue;const y=Math.round(it.transform[5]/3);(rows.get(y)||rows.set(y,[]).get(y)).push(it)}
+    [...rows].sort((a,b)=>b[0]-a[0]).forEach(([,its])=>out.push(its.sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')));
+  }
+  return out.join('\n');
+}
+async function docxText(f){
+  if(!window.JSZip)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  const x=await (await JSZip.loadAsync(f)).file('word/document.xml').async('string'),t=document.createElement('textarea');
+  return x.split('</w:p>').map(p=>{t.innerHTML=p.replace(/<w:tab\/>/g,'\t').replace(/<[^>]+>/g,'');return t.value}).join('\n');
+}
+let progDraft=null;
+async function progImport(inp){
+  const f=inp.files[0];inp.value='';if(!f)return;
+  const ext=f.name.split('.').pop().toLowerCase();
+  if(ext==='doc')return toast('Старый формат .doc не читается — сохрани как .docx или PDF, или вставь текст');
+  try{toast('Читаю «'+f.name+'»…');progFromText(ext==='pdf'?await pdfText(f):ext==='docx'?await docxText(f):await f.text(),f.name.replace(/\.[^.]+$/,''))}
+  catch(e){toast('Не удалось прочитать файл: '+e.message)}
+}
+function progFromText(text,name){
+  const days=parseProgram(text||'');
+  if(!days.length)return toast('Не нашёл упражнений. Каждое упражнение — на своей строке, дни — «День 1», «Понедельник:» или «# Ноги».');
+  progDraft={name:name||S.program?.name||'Моя программа',days};
+  if(tab!=='gym')go('gym');else render();
+  setTimeout(()=>$('#prog')?.scrollIntoView({behavior:'smooth',block:'start'}),50);
+  toast('Найдено дней: '+days.length+', упражнений: '+days.reduce((a,d)=>a+d.ex.length,0)+'. Проверь и сохрани.');
+}
+function progPaste(){$('#progTxtIn').value='';progTxt.showModal()}
+function progEdit(){progDraft=structuredClone(S.program);render()}
+function progSave(){
+  progDraft.days=progDraft.days.filter(d=>d.ex.length);
+  if(!progDraft.days.length)return toast('В программе нет ни одного упражнения');
+  S.program=progDraft;progDraft=null;commit();toast('Программа сохранена');
+}
+async function progDelete(){if(!await ask('Удалить программу? Записанные тренировки останутся.'))return;S.program=null;S.progDay={};progDraft=null;commit()}
+function progAddDay(){progDraft.days.push({id:uid(),name:'День '+(progDraft.days.length+1),wd:null,ex:[]});render()}
+function progDelDay(i){progDraft.days.splice(i,1);render()}
+function progAddEx(i,el){const n=el.value.trim();if(!n)return;progDraft.days[i].ex.push(n);render();$('#pex'+i)?.focus()}
+function progDelEx(i,j){progDraft.days[i].ex.splice(j,1);render()}
+// which program day applies to a date: explicit choice for that date, else the day attached to its weekday
+function progFor(d){
+  const P=S.program;if(!P)return null;
+  const o=S.progDay[d];if(o==='none')return null;
+  return P.days.find(x=>x.id===o)||P.days.find(x=>x.wd===new Date(d+'T12:00').getDay())||null;
+}
+function progAttach(v){S.progDay[day]=v;commit()}
+function progAdd(names){
+  const have=new Set(wk(day).map(e=>low(e.name)));
+  // only the exercise name: no planned sets/reps, one empty row to start logging
+  names.filter(n=>!have.has(low(n))).forEach(n=>wk(day).push({id:uid(),name:n,sets:[{w:'',r:'',done:false,warm:false}]}));
+  commit();
+}
+function progCard(){
+  const wdSel=(v,on)=>`<select class="fit" style="width:auto" onchange="${on}">${[['','Без дня недели'],...WDN].map(([k,n])=>`<option value="${k}" ${String(v??'')===String(k)?'selected':''}>${n}</option>`).join('')}</select>`;
+  if(progDraft)return `<div class="card hot" id="prog"><h2>📋 Программа: проверь и сохрани</h2>
+    <label class="sm mut">Название<input value="${esc(progDraft.name)}" oninput="progDraft.name=this.value" style="margin:4px 0 12px"></label>
+    ${progDraft.days.map((d,i)=>`<div class="pday"><div class="row"><input value="${esc(d.name)}" oninput="progDraft.days[i].name=this.value" style="flex:2 1 160px" aria-label="Название дня">
+      ${wdSel(d.wd,`progDraft.days[${i}].wd=this.value===''?null:+this.value`)}<button class="x fit" onclick="progDelDay(${i})" aria-label="Удалить день">×</button></div>
+      <div class="chips">${d.ex.map((n,j)=>`<span class="chip">${esc(n)}<button class="x" onclick="progDelEx(${i},${j})" aria-label="Убрать">×</button></span>`).join('')||'<span class="sm mut">Нет упражнений</span>'}</div>
+      <input id="pex${i}" list="exList" placeholder="+ Добавить упражнение и Enter" onkeydown="event.key==='Enter'&&progAddEx(${i},this)"></div>`).join('')}
+    <button style="width:100%;margin-bottom:12px" onclick="progAddDay()">+ День</button>
+    <div class="row"><button class="btn-a" onclick="progSave()">Сохранить программу</button><button onclick="progDraft=null;render()">Отмена</button></div>
+    <p class="sm mut" style="margin-top:10px">Выбери день недели — и в этот день программа сама появится во вкладке «Зал». Или оставь «Без дня недели» и выбирай день программы вручную на нужную дату.</p></div>`;
+  const P=S.program;
+  if(!P?.days?.length)return `<div class="card" id="prog"><h2>📋 Моя программа</h2>
+    <p class="sm mut" style="margin-bottom:12px">Загрузи свою программу: PDF, Word (.docx), TXT или просто вставь текст. Приложение возьмёт названия упражнений по дням — подходы ты отмечаешь сам.</p>
+    <div class="row"><button class="btn-a" onclick="progFile.click()">Загрузить файл</button><button onclick="progPaste()">Вставить текст</button></div></div>`;
+  const d=progFor(day),have=new Set(wk(day).map(e=>low(e.name))),miss=d?d.ex.filter(n=>!have.has(low(n))):[],sel=d?d.id:'none';
+  return `<div class="card hot" id="prog"><h2>📋 ${esc(P.name)}<span class="sp"></span><button class="ico" onclick="progEdit()">Изменить</button></h2>
+    <div class="row" style="margin-bottom:12px"><span class="sm mut fit">${fmtDay(day,{weekday:'long',day:'numeric',month:'short'})}</span>
+      <select onchange="progAttach(this.value)" aria-label="День программы на эту дату"><option value="none" ${sel==='none'?'selected':''}>Без программы</option>${P.days.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${esc(x.name)}${x.wd!=null?' · '+WDN.find(w=>w[0]===x.wd)[1]:''}</option>`).join('')}</select></div>
+    ${d?`<div class="list">${d.ex.map(n=>have.has(low(n))?`<div class="item done"><div class="t">${esc(n)}</div><span class="sm up">добавлено</span></div>`
+        :`<div class="item" onclick='progAdd([${esc(JSON.stringify(n))}])' style="cursor:pointer"><div class="t">${esc(n)}</div><span class="sm mut">+ добавить</span></div>`).join('')}</div>
+      ${miss.length?`<button class="btn-a" style="width:100%;margin-top:12px" onclick="progAdd(progFor(day).ex)">Начать тренировку: ${miss.length} упр.</button>`:'<p class="sm up" style="margin-top:10px">Все упражнения дня ниже ↓ Отмечай подходы.</p>'}`
+      :'<p class="empty">На эту дату день программы не выбран. Выбери его выше или прикрепи дни программы к дням недели через «Изменить».</p>'}</div>`;
 }
 
 // ---------- research popup ----------
