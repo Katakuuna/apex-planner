@@ -203,6 +203,18 @@ main.soft{animation:fadeBg .25s ease}
 .ex-c{margin-top:3px;font-size:12.5px;line-height:1.4}.item.done .ex-c{display:none}
 .rules{margin-top:14px}.rules summary{font-size:14px;color:var(--rose)}
 .rules dl{display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.45}.rules dt{font-weight:600}.rules dd{margin:2px 0 0;color:var(--mut)}
+.warm-h{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fat);padding:8px 8px 2px}.warm-h.work{color:var(--rose)}
+.set.warm input{color:var(--fat)}.set.warm.done input{color:#ffc46b}
+select.gsel{width:auto;flex:0 0 auto;padding:3px 8px;font-size:12px;font-weight:500;border-radius:999px;background:#9B1B3040;color:#ff8597;box-shadow:inset 0 0 0 .5px #e0364f66}
+.wg{display:grid;grid-template-columns:auto 1fr auto;gap:10px 12px;align-items:center;font-size:13px}
+.wg .tr{position:relative;height:10px;border-radius:5px;background:#ffffff0a;overflow:hidden;min-width:60px}
+.wg .zone{position:absolute;top:0;bottom:0;background:#30d15826;box-shadow:inset 1px 0 0 #30d15866,inset -1px 0 0 #30d15866}
+.wg i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;transform-origin:left}.wg i.ok{background:var(--ok)}.wg i.hi{background:var(--acc2)}.wg i.lo{background:var(--fat)}
+.wg .gv{font-variant-numeric:tabular-nums;color:var(--mut);white-space:nowrap}.wg .gv b{color:var(--txt)}.wg .gv.ok b{color:var(--ok)}.wg .gv.hi b{color:#ff8597}.wg .gv.lo b{color:var(--fat)}
+.enter .wg i{animation:fill .9s .2s var(--ease) backwards}
+.neu{color:var(--rose)}.ov .tr i.n{background:var(--rose)}
+.verdict{font-weight:600;font-size:16px;margin-bottom:12px}.verdict.g{color:var(--ok)}.verdict.b{color:#ff8597}.verdict.n{color:var(--rose)}
+.vd{width:10px;height:10px;border-radius:50%;flex:0 0 auto;background:var(--rose)}.vd.g{background:var(--ok)}.vd.b{background:var(--acc2)}
 .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 12px;margin-bottom:6px}
 </style>
 </head>
@@ -301,7 +313,7 @@ const low=s=>s.trim().toLowerCase();
 // ---------- state ----------
 const KEY='apex.v1';
 const DEF={settings:{kcal:2700,p:180,f:70,c:250,maint:2500,water:3000,goalWeight:82,rest:120},
-  goals:[],body:{},program:null,progDay:{},tasks:{},notes:{},habits:[],habitLog:{},workouts:{},food:{},foods:{},water:{},weight:{},ui:{}};
+  goals:[],body:{},program:null,progDay:{},exGroups:{},tasks:{},notes:{},habits:[],habitLog:{},workouts:{},food:{},foods:{},water:{},weight:{},ui:{}};
 function norm(d){const s={...structuredClone(DEF),...d};s.settings={...DEF.settings,...d.settings};s.ui||={};return s}
 function load(){let d={};try{d=JSON.parse(localStorage.getItem(KEY))||{}}catch{}return norm(d)}
 let S=load(),tab=S.ui.tab||'home',day=today();
@@ -655,6 +667,9 @@ const wk=d=>S.workouts[d]||=[];
 const exOf=id=>wk(day).find(e=>e.id===id);
 const e1=s=>{const w=num(s.w),r=num(s.r);return r<=1?w:w*(1+r/30)}; // Epley
 const working=sets=>sets.filter(s=>s.done&&!s.warm&&num(s.w)&&num(s.r));
+const isWork=s=>s.done&&!s.warm; // counts toward weekly working sets (bodyweight sets have no kg)
+// previous session's matching set of the same kind: warm-ups pair with warm-ups, working sets with working sets
+function prevSet(e,i,p){const s=e.sets[i],k=e.sets.slice(0,i).filter(x=>!!x.warm===!!s.warm).length;return p?.sets.filter(x=>!!x.warm===!!s.warm)[k]}
 const dayVolume=d=>sum((S.workouts[d]||[]).flatMap(e=>working(e.sets)).map(s=>num(s.w)*num(s.r)));
 const allEx=()=>[...new Set([...Object.values(S.workouts).flat().map(e=>e.name),...DEFAULT_EX])];
 function prevEx(name,d){
@@ -678,12 +693,14 @@ function repeatLast(){
   wk(day).push(...S.workouts[d].map(e=>({id:uid(),name:e.name,sets:e.sets.map(s=>({w:'',r:'',done:false,warm:!!s.warm}))})));commit();
 }
 async function delEx(id){if(!await ask('Удалить упражнение из тренировки?'))return;S.workouts[day]=wk(day).filter(e=>e.id!==id);commit()}
-function addSet(id){const e=exOf(id),l=e.sets.at(-1);e.sets.push({w:l?.w??'',r:l?.r??'',done:false,warm:false});commit()}
-function popSet(id){exOf(id).sets.pop();commit()}
+function addSet(id){const e=exOf(id),l=e.sets.filter(s=>!s.warm).at(-1);e.sets.push({w:l?.w??'',r:l?.r??'',done:false,warm:false});commit()}
+function addWarm(id){const e=exOf(id);e.sets.splice(e.sets.filter(s=>s.warm).length,0,{w:'',r:'',done:false,warm:true});commit()}
+// removes the last working set; the last warm-up only when no working sets are left
+function popSet(id){const e=exOf(id),i=e.sets.map(s=>!s.warm).lastIndexOf(true);e.sets.splice(i<0?e.sets.length-1:i,1);commit()}
 function setVal(id,i,k,v){exOf(id).sets[i][k]=v;save()}
 function toggleWarm(id,i){const s=exOf(id).sets[i];s.warm=!s.warm;commit()}
 function doneSet(id,i){
-  const e=exOf(id),s=e.sets[i],p=prevEx(e.name,day)?.sets[i];
+  const e=exOf(id),s=e.sets[i],p=prevSet(e,i,prevEx(e.name,day));
   s.done=!s.done;
   if(s.done){if(s.w===''&&p)s.w=p.w;if(s.r===''&&p)s.r=p.r;startRest(num(S.settings.rest)||120)}
   commit();
@@ -772,37 +789,40 @@ plan(){
     <input id="gTitle" placeholder="Цель" style="flex:2 1 180px" onkeydown="event.key==='Enter'&&addGoal()"><select id="gParent">${goalOptions('Верхний уровень')}</select><button class="btn-a fit" onclick="addGoal()">Добавить</button></div></div>`;
 },
 gym(){
-  const w=wk(day),vol=dayVolume(day),nSets=sum(w.map(e=>working(e.sets).length));
+  const w=wk(day),vol=dayVolume(day),nSets=sum(w.map(e=>e.sets.filter(isWork).length));
   const recent=Object.keys(S.workouts).filter(d=>S.workouts[d].length).sort().reverse().slice(0,6);
   const names=[...new Set(Object.values(S.workouts).flat().filter(e=>working(e.sets).length).map(e=>e.name))];
   const sel=names.includes(S.ui.ex)?S.ui.ex:names[0],hist=sel?exHistory(sel).slice(-20):[];
   let prs=0;
   const cards=w.map(e=>{
-    const p=prevEx(e.name,day),best=bestBefore(e.name,day),cue=progNote(e.name),pn=prevNote(e.name,day);
-    const rows=e.sets.map((s,i)=>{const ps=p?.sets[i],pr=s.done&&!s.warm&&best>0&&e1(s)>best;if(pr)prs++;
-      return `<div class="set ${s.done?'done':''} ${pr?'pr':''}">
-      <button class="n ${s.warm?'w':''}" onclick="toggleWarm('${e.id}',${i})" title="Разминочный / рабочий">${s.warm?'Р':i+1}</button>
+    const p=prevEx(e.name,day),best=bestBefore(e.name,day),cue=progNote(e.name),pn=prevNote(e.name,day),no={w:0,k:0};
+    const row=i=>{const s=e.sets[i],ps=prevSet(e,i,p),pr=s.done&&!s.warm&&best>0&&e1(s)>best;if(pr)prs++;
+      return `<div class="set ${s.warm?'warm':''} ${s.done?'done':''} ${pr?'pr':''}">
+      <button class="n ${s.warm?'w':''}" onclick="toggleWarm('${e.id}',${i})" title="${s.warm?'Сделать рабочим':'Сделать разминочным'}">${s.warm?'Р'+(++no.w):++no.k}</button>
       <span class="prev">${ps&&ps.w!==''?`${esc(ps.w)} × ${esc(ps.r)}`:'—'}</span>
       <input inputmode="decimal" value="${esc(s.w)}" placeholder="${esc(ps?.w||'кг')}" oninput="setVal('${e.id}',${i},'w',this.value)" aria-label="Вес">
       <input inputmode="numeric" value="${esc(s.r)}" placeholder="${esc(ps?.r||'повт')}" oninput="setVal('${e.id}',${i},'r',this.value)" aria-label="Повторы">
-      <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Подход выполнен"></button></div>`}).join('');
-    return `<div class="card"><h2>${esc(e.name)}${e.sets.some(s=>s.done&&!s.warm&&best>0&&e1(s)>best)?' <span class="chip">🔥 Рекорд</span>':''}<span class="sp"></span><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
+      <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Подход выполнен"></button></div>`};
+    const idx=e.sets.map((s,i)=>i),warm=idx.filter(i=>e.sets[i].warm),work=idx.filter(i=>!e.sets[i].warm),g=groupOf(e.name);
+    const rows=(warm.length?`<div class="warm-h">Разминка · не идёт в рабочие подходы</div>${warm.map(row).join('')}${work.length?'<div class="warm-h work">Рабочие</div>':''}`:'')+work.map(row).join('');
+    return `<div class="card"><h2>${esc(e.name)}${e.sets.some(s=>s.done&&!s.warm&&best>0&&e1(s)>best)?' <span class="chip">🔥 Рекорд</span>':''}<span class="sp"></span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
     ${cue?`<div class="cue"><span class="lbl">Из программы</span>${esc(cue)}</div>`:''}
     ${pn?`<div class="cue mine"><span class="lbl">Твоя заметка · ${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div>`:''}
     <div class="set h"><span>Сет</span><span>Прошлый</span><span>Вес, кг</span><span>Повторы</span><span></span></div>${rows}
-    <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ Подход</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')">− Подход</button>`:''}</div>
+    <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ Подход</button><button onclick="addWarm('${e.id}')">+ Разминка</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="Убрать подход">−</button>`:''}</div>
     <textarea class="exnote" rows="1" placeholder="Заметка: самочувствие, техника, что поменять в следующий раз" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea>
     ${p&&best?`<div class="sm mut" style="margin-top:8px">Прошлый раз: ${fmtDay(p.d,{day:'numeric',month:'short'})} · лучший 1ПМ ≈ ${r1(best)} кг</div>`:''}</div>`}).join('');
   return `<div class="grid">
     <div class="card"><div class="lbl">Объём тренировки</div><div class="big">${fmt(vol)} <small>кг</small></div></div>
     <div class="card"><div class="lbl">Рабочих подходов</div><div class="big">${nSets}</div></div>
     <div class="card"><div class="lbl">Рекорды сегодня</div><div class="big ${prs?'down':''}">${prs}</div></div></div>
+  ${weekGroupsCard()}
   ${progCard()}
   <div class="card hot"><h2>Добавить упражнение</h2>
     <div class="row"><input id="exName" list="exList" placeholder="Название упражнения" onkeydown="event.key==='Enter'&&addEx()" style="flex:3 1 200px"><button class="btn-a fit" onclick="addEx()">Добавить</button></div>
     <datalist id="exList">${allEx().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
     ${!w.length&&recent.some(d=>d<day)?`<button style="margin-top:10px" onclick="repeatLast()">↻ Повторить прошлую тренировку</button>`:''}
-    <p class="sm mut" style="margin-top:10px">Серые цифры — прошлый раз. Отметьте ✓ — значения подставятся, запустится таймер отдыха. Нажмите на номер сета, чтобы пометить разминку (Р).</p></div>
+    <p class="sm mut" style="margin-top:10px">Серые цифры — прошлый раз. Отметь ✓ — значения подставятся, запустится таймер отдыха. Разминку добавляй кнопкой «+ Разминка»: она не идёт в объём и в рабочие подходы.</p></div>
   ${cards}
   <div class="card hot"><h2>Прогресс по упражнению</h2>
     ${names.length?`<select onchange="S.ui.ex=this.value;commit()" style="margin-bottom:14px">${names.map(n=>`<option ${n===sel?'selected':''}>${esc(n)}</option>`).join('')}</select>
@@ -817,19 +837,20 @@ gym(){
 body(){
   const w=lastWeight(),fw=weights()[0],names=liftNames(),ex=names.includes(S.ui.ex)?S.ui.ex:names[0],hist=ex?exHistory(ex).slice(-30):[];
   const mk=MEAS.some(m=>m.k===S.ui.mk)?S.ui.mk:'biceps',m=MEAS.find(x=>x.k===mk),mh=measHist(mk);
-  const tag=(m,cur,first,unit)=>{const d=cur!=null&&first!=null?r1(cur-first):null,good=d?Math.sign(d)===(m.good||1):null;
-    return `<button class="mtag ${m.side} ${good==null?'':good?'g':'b'}" style="top:${m.y/5}%;${m.side==='l'?'left:1%':'left:77%'}" onclick="openMeas('${m.k}')"><span class="mn">${m.n}</span><b>${cur??'—'}${cur!=null?`<small> ${unit}</small>`:''}</b>${d?`<i class="${good?'up':'down'}">${d>0?'+':''}${d} ${unit}</i>`:''}</button>`};
+  const tag=(m,cur,first,unit)=>{const d=cur!=null&&first!=null?r1(cur-first):null,j=d!=null?judge(m.k):null;
+    return `<button class="mtag ${m.side} ${j||''}" style="top:${m.y/5}%;${m.side==='l'?'left:1%':'left:77%'}" onclick="openMeas('${m.k}')"><span class="mn">${m.n}</span><b>${cur??'—'}${cur!=null?`<small> ${unit}</small>`:''}</b>${d?`<i class="${JC[j]}">${d>0?'+':''}${d} ${unit}</i>`:''}</button>`};
   const tags=tag(WM,w?.kg??null,fw?.[1]??null,'кг')+MEAS.map(m=>tag(m,measAt(m.k,day),measFirst(m.k),'см')).join('');
-  const ov=MEAS.map(m=>{const h=measHist(m.k);if(h.length<2)return '';const a=h[0].v,b=h.at(-1).v,pc=(b/a-1)*100,good=Math.sign(b-a)===(m.good||1);return {m,a,b,pc,good}}).filter(Boolean);
+  const ov=MEAS.map(m=>{const h=measHist(m.k);if(h.length<2)return '';const a=h[0].v,b=h.at(-1).v,pc=(b/a-1)*100,j=judge(m.k);return {m,a,b,pc,j}}).filter(Boolean);
   const mx=Math.max(1,...ov.map(o=>Math.abs(o.pc)));
   return `<div class="card hot vitru"><div class="fig">${figure()}${tags}</div>
     <div class="row" style="margin-top:6px"><button class="btn-a" onclick="openMeas()">Записать замеры за ${fmtDay(day,{day:'numeric',month:'short'})}</button></div>
-    <p class="sm mut" style="margin-top:10px">Нажми на любой замер на фигуре. Зелёный — прогресс к цели, красный — в обратную сторону (для талии наоборот). Разница считается от первого замера.</p></div>
+    <p class="sm mut" style="margin-top:10px">Нажми на любой замер на фигуре, чтобы записать его. ${{cut:'Режим сушки (цель ниже текущего веса): зелёный — хорошо, серый — ожидаемо на дефиците, красный — тревожный знак, например объём мышц уходит быстрее талии.',bulk:'Режим набора (цель выше текущего веса): зелёный — рост, красный — уменьшение; талия, растущая на наборе, — серая.',maint:'Режим поддержания: зелёный — мышцы растут или талия уменьшается, красный — наоборот.'}[phase()]} Разница — от первого замера.</p></div>
+  ${cutCard()}
   <div class="card" id="mk"><h2>Замеры в динамике</h2>
     <div class="seg">${MEAS.map(x=>`<button class="${x.k===mk?'on':''}" onclick="pick('mk','${x.k}')">${x.n}</button>`).join('')}</div>
-    ${mh.length?`<div class="big">${mh.at(-1).v} <small>см · ${m.n.toLowerCase()}</small></div>${mh.length>1?`<div class="sm ${Math.sign(mh.at(-1).v-mh[0].v)===(m.good||1)?'up':'down'}">${mh.at(-1).v-mh[0].v>0?'+':''}${r1(mh.at(-1).v-mh[0].v)} см с ${fmtDay(mh[0].d,{day:'numeric',month:'short'})}</div>`:''}`:''}
+    ${mh.length?`<div class="big">${mh.at(-1).v} <small>см · ${m.n.toLowerCase()}</small></div>${mh.length>1?`<div class="sm ${JC[judge(mk)]}">${mh.at(-1).v-mh[0].v>0?'+':''}${r1(mh.at(-1).v-mh[0].v)} см с ${fmtDay(mh[0].d,{day:'numeric',month:'short'})}</div>`:''}`:''}
     ${line(mh.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:h.v})))}</div>
-  <div class="card"><h2>Прогресс всех замеров</h2>${ov.length?`<div class="ov">${ov.map(o=>`<span>${o.m.n}</span><span class="tr"><i class="${o.good?'g':'b'}" style="${o.pc>=0?'left:50%':'right:50%'};width:${Math.abs(o.pc)/mx*50}%;transform-origin:${o.pc>=0?'left':'right'}"></i></span><span class="${o.good?'up':'down'}">${o.b-o.a>0?'+':''}${r1(o.b-o.a)} см · ${o.pc>0?'+':''}${r1(o.pc)}%</span>`).join('')}</div>`:'<p class="empty">Нужно хотя бы два замера одной части тела.</p>'}</div>
+  <div class="card"><h2>Прогресс всех замеров</h2>${ov.length?`<div class="ov">${ov.map(o=>`<span>${o.m.n}</span><span class="tr"><i class="${o.j}" style="${o.pc>=0?'left:50%':'right:50%'};width:${Math.abs(o.pc)/mx*50}%;transform-origin:${o.pc>=0?'left':'right'}"></i></span><span class="${JC[o.j]}">${o.b-o.a>0?'+':''}${r1(o.b-o.a)} см · ${o.pc>0?'+':''}${r1(o.pc)}%</span>`).join('')}</div>`:'<p class="empty">Нужно хотя бы два замера одной части тела.</p>'}</div>
 ${weightCard()}
   <div class="card hot" id="ex"><h2>Силовые показатели</h2>
     ${names.length?`<div class="seg">${names.map(n=>`<button class="${n===ex?'on':''}" onclick="pick('ex',this.textContent)">${esc(n)}</button>`).join('')}</div>
@@ -885,6 +906,42 @@ const bodyDays=()=>Object.keys(S.body).sort();
 const measHist=k=>bodyDays().filter(d=>S.body[d][k]!=null).map(d=>({d,v:S.body[d][k]}));
 const measAt=(k,upto)=>{const h=measHist(k).filter(x=>x.d<=upto);return h.length?h.at(-1).v:null};
 const measFirst=k=>measHist(k)[0]?.v??null;
+// A change is judged against the goal. On a cut girths shrink from fat too; the warning sign is muscle girths
+// shrinking faster than the waist, and strength dropping (see cutCard).
+const FAT=['waist'],JC={g:'up',n:'neu',b:'down'};
+function phase(){const w=lastWeight()?.kg,g=num(S.settings.goalWeight);return !w||!g?'maint':g<w-0.5?'cut':g>w+0.5?'bulk':'maint'}
+function measPc(k){const h=k==='weight'?weights().map(([d,v])=>({d,v})):measHist(k);return h.length<2?null:{d:r1(h.at(-1).v-h[0].v),pc:(h.at(-1).v/h[0].v-1)*100}}
+function judge(k){
+  const c=measPc(k);if(!c)return null;const ph=phase(),{d,pc}=c;
+  if(k==='weight')return ph==='maint'||!d?'n':Math.sign(d)===(ph==='cut'?-1:1)?'g':'b';
+  if(FAT.includes(k))return d<0?'g':d>0&&ph!=='bulk'?'b':'n';
+  if(d>0||(!d&&ph==='cut'))return 'g';
+  if(!d)return 'n';
+  if(ph!=='cut')return 'b';
+  const w=measPc('waist'); // on a cut a muscle girth may shrink, but not faster than the waist
+  return (w?pc<w.pc:pc<-3)?'b':'n';
+}
+function liftTrend(since){
+  const r=liftNames().map(n=>{const h=exHistory(n).filter(x=>x.d>=since);return h.length>=2?(h.at(-1).e1/h[0].e1-1)*100:null}).filter(v=>v!=null);
+  return r.length?{pc:sum(r)/r.length,n:r.length}:null;
+}
+// cut check: rate of loss, waist vs muscle girths, strength — strength is the best tell for keeping muscle
+function cutCard(){
+  if(phase()!=='cut')return '';
+  const since=[bodyDays()[0],weights()[0]?.[0]].filter(Boolean).sort()[0]||addDays(today(),-28),ws=weightStats(),w=measPc('waist');
+  const mus=MEAS.filter(m=>!FAT.includes(m.k)).map(m=>measPc(m.k)).filter(Boolean),mp=mus.length?sum(mus.map(x=>x.pc))/mus.length:null,st=liftTrend(since),rows=[];
+  if(ws){const v=ws.pw<-1?'b':ws.pw<=-0.5?'g':'n';rows.push([v,'Темп',`${r1(ws.weekly)} кг/нед (${r1(ws.pw)}%) — ${v==='b'?'быстрее 1% массы в неделю: выше риск потерять мышцы':v==='g'?'в рекомендованной зоне 0.5–1% массы в неделю':'медленнее 0.5% в неделю: можно чуть увеличить дефицит'}`])}
+  if(w&&mp!=null){const v=w.pc<0&&mp>w.pc?'g':w.pc<0?'b':'n';rows.push([v,'Талия и мышцы',`талия ${w.pc>0?'+':''}${r1(w.pc)}%, объёмы мышц в среднем ${mp>0?'+':''}${r1(mp)}% — ${v==='g'?'уходит в основном жир':v==='b'?'мышцы уменьшаются быстрее талии':'талия пока не уменьшается'}`])}
+  if(st){const v=st.pc>=-2?'g':st.pc<-5?'b':'n';rows.push([v,'Сила',`${st.pc>0?'+':''}${r1(st.pc)}% в среднем по ${st.n} упр. — ${v==='g'?'держится, мышцы на месте':v==='b'?'падает — тревожный знак':'немного просела, на дефиците это нормально'}`])}
+  if(!rows.length)return `<div class="card"><h2>Как идёт сушка</h2><p class="empty">Нужны хотя бы два замера веса или талии и пара тренировок — тогда здесь появится разбор: уходит жир или мышцы.</p></div>`;
+  const bad=rows.some(r=>r[0]==='b'),allGood=rows.every(r=>r[0]==='g');
+  const [hv,ht]=bad?['b','Есть признаки потери мышц']:allGood?['g','Жир уходит, мышцы сохраняются']:['n','Пока всё в пределах нормы'];
+  return `<div class="card hot" id="cut"><h2>Как идёт сушка</h2>
+    <div class="verdict ${hv}">${{g:'✓',b:'!',n:'•'}[hv]} ${ht}</div>
+    <div class="list">${rows.map(([v,t,d])=>`<div class="item"><span class="vd ${v}"></span><div class="t"><b>${t}</b><div class="sm mut">${d}</div></div></div>`).join('')}</div>
+    ${bad?'<p class="sm" style="margin-top:12px">Что помогает сохранить мышцы на дефиците: белок 1.6–2.2 г/кг веса, худеть не быстрее 1% массы в неделю, не бросать тяжёлую базу, спать 7–9 часов.</p>':''}
+    <p class="sm mut" style="margin-top:10px">На сушке обхваты уменьшаются и от жира, это нормально. Мышцы выдаёт сила: держатся рабочие веса — мышцы на месте. Отсчёт с ${fmtDay(since,{day:'numeric',month:'long'})}.</p></div>`;
+}
 const liftNames=()=>[...new Set(Object.values(S.workouts).flat().filter(e=>working(e.sets).length).map(e=>e.name))];
 function pick(key,v){S.ui[key]=v;save();render();const c=document.getElementById(key);if(!c)return;c.classList.remove('enter');void c.offsetWidth;c.classList.add('enter');setTimeout(()=>c.classList.remove('enter'),1300)}
 function openMeas(k){
@@ -913,7 +970,7 @@ const HALF=[[211,98],[250,112],[268,126],[277,160],[284,200],[299,245],[311,278]
 const BODY=[...HALF,...HALF.slice(0,-1).reverse().map(([x,y])=>[400-x,y])].map(([x,y])=>[x+60,y]);
 function figure(){
   const ticks=[];for(let i=0;i<=20;i++){const t=47+i*21.3;ticks.push(`M${t},32v${i%5?5:10}M${t},458v-${i%5?5:10}M47,${32+i*21.3}h${i%5?5:10}M473,${32+i*21.3}h-${i%5?5:10}`)}
-  const trend=m=>{const h=m.k==='weight'?weights().map(([d,v])=>({v})):measHist(m.k);if(h.length<2)return 'var(--rose)';const d=h.at(-1).v-h[0].v;return !d?'var(--rose)':Math.sign(d)===(m.good||1)?'var(--ok)':'var(--acc2)'};
+  const trend=m=>({g:'var(--ok)',b:'var(--acc2)'})[judge(m.k)]||'var(--rose)';
   const lead=m=>{const x2=m.side==='l'?125:415,c=trend(m);
     return `<path d="M${m.ax},${m.ay}C${(m.ax+x2)/2},${m.ay} ${(m.ax+x2)/2},${m.y} ${x2},${m.y}" stroke="${c}" stroke-opacity=".55" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/>
     <circle class="pulse" cx="${m.ax}" cy="${m.ay}" r="5" fill="${c}"/><circle cx="${m.ax}" cy="${m.ay}" r="4" fill="${c}" stroke="#0D0D0E" stroke-width="1.5"/>`};
@@ -939,19 +996,28 @@ const exs=d=>d.ex.map(e=>typeof e==='string'?{n:e,c:''}:e); // programs saved be
 const hasWord=t=>/[a-zа-яё]{3}/i.test(t||'');
 // Table layout (Excel sheet, tab-separated paste): a header row with an «Упражнение» column; a comment column is optional.
 // Rows whose exercise cell is empty (merged «ПОНЕДЕЛЬНИК — Грудь…») start a new day. Sets/reps/rest columns are ignored on purpose.
-const NAME_COL=/^(упражнени|exercise|название)/i,NOTE_COL=/ключев|коммент|заметк|примечан|техник|подсказ|акцент|note|comment|cue/i;
+const NAME_COL=/^(упражнени|exercise|название)/i,NOTE_COL=/ключев|коммент|заметк|примечан|техник|подсказ|акцент|note|comment|cue/i,GROUP_COL=/^(групп|мышц|muscle|group)/i;
 function parseTable(rows){
   const hi=rows.findIndex(r=>r.some(c=>NAME_COL.test((c||'').trim())));if(hi<0)return null;
-  const ni=rows[hi].findIndex(c=>NAME_COL.test((c||'').trim())),ci=rows[hi].findIndex((c,i)=>i!==ni&&NOTE_COL.test(c||''));
+  const ni=rows[hi].findIndex(c=>NAME_COL.test((c||'').trim())),ci=rows[hi].findIndex((c,i)=>i!==ni&&NOTE_COL.test(c||'')),gi=rows[hi].findIndex((c,i)=>i!==ni&&GROUP_COL.test((c||'').trim()));
   const days=[];let cur=null;
   for(const r of rows.slice(hi+1)){
     const cells=r.map(c=>(c||'').replace(/\s+/g,' ').trim()),n=cells[ni]||'',filled=cells.filter(Boolean);
     if(!n||(DAY_HEAD.test(n)&&filled.length===1)){const t=n||filled.find(hasWord);if(t){cur={id:uid(),name:t,wd:wdOf(t),ex:[]};days.push(cur)}continue}
     if(!hasWord(n)||/^(отдых|rest|выходной)/i.test(n))continue;
     if(!cur){cur={id:uid(),name:'День 1',wd:null,ex:[]};days.push(cur)}
-    if(!cur.ex.some(e=>low(e.n)===low(n)))cur.ex.push({n,c:ci>=0?cells[ci]||'':''});
+    if(!cur.ex.some(e=>low(e.n)===low(n)))cur.ex.push({n,c:ci>=0?cells[ci]||'':'',g:gi>=0&&hasWord(cells[gi])?cells[gi]:''});
   }
   return days.filter(d=>d.ex.length);
+}
+// «Группа | … | Ориентир в неделю: 12-20» sheet → weekly working-set targets per muscle group
+const normG=g=>cap(g.trim().toLowerCase());
+function parseTargets(rows){
+  const isG=c=>/^групп/i.test((c||'').trim()),isT=c=>/ориентир|норм|цель|target|рекоменд/i.test(c||'');
+  const hi=rows.findIndex(r=>r.some(isG)&&r.some(isT));if(hi<0)return null;
+  const gi=rows[hi].findIndex(isG),ti=rows[hi].findIndex(isT),t={};
+  for(const r of rows.slice(hi+1)){const m=String(r[ti]||'').match(/(\d+)\s*[-–—]\s*(\d+)/);if(m&&hasWord(r[gi]))t[normG(r[gi])]=[+m[1],+m[2]]}
+  return Object.keys(t).length?t:null;
 }
 // «Правило | Что это значит» sheets become the program's rules
 const RULES_SHEET=/как польз|правил|инструкц|памятк|принцип|readme|guide|rules/i;
@@ -1021,13 +1087,14 @@ async function xlsxSheets(f){
   return out;
 }
 async function xlsxProgram(f){
-  const sheets=await xlsxSheets(f),days=[],rules=[];
+  const sheets=await xlsxSheets(f),days=[],rules=[];let targets=null;
   for(const s of sheets){
-    if(/дневник|журнал|journal|log|объ[её]м|volume|статист/i.test(s.name))continue; // diary/stats sheets are not the plan
+    if(/объ[её]м|volume|статист/i.test(s.name)){targets=parseTargets(s.rows)||targets;continue}
+    if(/дневник|журнал|journal|log/i.test(s.name))continue; // the diary is not the plan
     const t=parseTable(s.rows);
     if(t?.length)days.push(...t);else if(RULES_SHEET.test(s.name))rules.push(...parseRules(s.rows));
   }
-  return {days:days.length?days:parseProgram(sheets.map(s=>s.rows.map(r=>r.join('\t')).join('\n')).join('\n')),rules};
+  return {days:days.length?days:parseProgram(sheets.map(s=>s.rows.map(r=>r.join('\t')).join('\n')).join('\n')),rules,targets};
 }
 let progDraft=null;
 async function progImport(inp){
@@ -1036,16 +1103,16 @@ async function progImport(inp){
   if(ext==='doc'||ext==='xls')return toast('Старый формат .'+ext+' не читается — пересохрани как .'+ext+'x или PDF, или вставь текст');
   try{
     toast('Читаю «'+f.name+'»…');
-    if(ext==='xlsx'){const {days,rules}=await xlsxProgram(f);return progFromDays(days,name,rules)}
+    if(ext==='xlsx'){const {days,rules,targets}=await xlsxProgram(f);return progFromDays(days,name,rules,targets)}
     let text=ext==='pdf'?await pdfText(f):ext==='docx'?await docxText(f):await f.text();
     if(ext==='csv')text=text.split(/\r?\n/).map(l=>l.split(l.includes(';')?';':',').join('\t')).join('\n'); // ponytail: no quoted-field support
     progFromDays(parseProgram(text),name);
   }catch(e){toast('Не удалось прочитать файл: '+e.message)}
 }
 const progFromText=(text,name)=>progFromDays(parseProgram(text||''),name);
-function progFromDays(days,name,rules=[]){
+function progFromDays(days,name,rules=[],targets=null){
   if(!days.length)return toast('Не нашёл упражнений. Нужна колонка «Упражнение» или каждое упражнение на своей строке, дни — «День 1», «Понедельник:».');
-  progDraft={name:name||S.program?.name||'Моя программа',days,rules};
+  progDraft={name:name||S.program?.name||'Моя программа',days,rules,targets};
   if(tab!=='gym')go('gym');else render();
   setTimeout(()=>$('#prog')?.scrollIntoView({behavior:'smooth',block:'start'}),50);
   const n=days.reduce((a,d)=>a+d.ex.length,0),c=days.reduce((a,d)=>a+d.ex.filter(e=>e.c).length,0);
@@ -1094,7 +1161,7 @@ function progCard(){
     <label class="sm mut">Название<input value="${esc(progDraft.name)}" oninput="progDraft.name=this.value" style="margin:4px 0 12px"></label>
     ${progDraft.days.map((d,i)=>`<div class="pday"><div class="row"><input value="${esc(d.name)}" oninput="progDraft.days[${i}].name=this.value" style="flex:2 1 160px" aria-label="Название дня">
       ${wdSel(d.wd,`progDraft.days[${i}].wd=this.value===''?null:+this.value`)}<button class="x fit" onclick="progDelDay(${i})" aria-label="Удалить день">×</button></div>
-      <div class="pex-list">${d.ex.map((e,j)=>`<div class="pex"><div class="row" style="flex-wrap:nowrap"><span class="t">${esc(e.n)}</span><button class="x fit" onclick="progDelEx(${i},${j})" aria-label="Убрать">×</button></div>
+      <div class="pex-list">${d.ex.map((e,j)=>`<div class="pex"><div class="row" style="flex-wrap:nowrap"><span class="t">${esc(e.n)} <span class="chip g">${esc(e.g?normG(e.g):groupOf(e.n))}</span></span><button class="x fit" onclick="progDelEx(${i},${j})" aria-label="Убрать">×</button></div>
         <textarea class="cmt" rows="1" placeholder="Комментарий к упражнению" oninput="progDraft.days[${i}].ex[${j}].c=this.value">${esc(e.c)}</textarea></div>`).join('')||'<span class="sm mut">Нет упражнений</span>'}</div>
       <input id="pex${i}" list="exList" placeholder="+ Добавить упражнение и Enter" onkeydown="event.key==='Enter'&&progAddEx(${i},this)"></div>`).join('')}
     <button style="width:100%;margin-bottom:12px" onclick="progAddDay()">+ День</button>
@@ -1114,6 +1181,45 @@ function progCard(){
       ${miss.length?`<button class="btn-a" style="width:100%;margin-top:12px" onclick="progAdd(exs(progFor(day)).map(e=>e.n))">Начать тренировку: ${miss.length} упр.</button>`:'<p class="sm up" style="margin-top:10px">Все упражнения дня ниже ↓ Отмечай подходы.</p>'}`
       :'<p class="empty">На эту дату день программы не выбран. Выбери его выше или прикрепи дни программы к дням недели через «Изменить».</p>'}
     ${rulesBlock(P.rules)}</div>`;
+}
+
+// ---------- muscle groups: weekly working sets per group ----------
+const GROUPS=['Грудь','Спина','Плечи','Бицепс','Трицепс','Предплечья','Пресс','Квадрицепс','Бицепс бедра','Ягодицы','Икры'];
+// ponytail: keyword guess from the exercise name; the program's «Группа» column or the user's pick wins
+const GUESS=[
+  [/предплеч|запяст|forearm|wrist/i,'Предплечья'],
+  [/пресс|скручив|планк|подъ[её]мы? ног|crunch|plank|\babs?\b/i,'Пресс'],
+  [/носк|икр|calf/i,'Икры'],
+  [/сгибани[яей]+ ног|румынск|leg curl|romanian|rdl|бицепс бедра|гиперэкст/i,'Бицепс бедра'],
+  [/ягодиц|ягодич|мост|hip thrust|glute|отведени[яе] ног/i,'Ягодицы'],
+  [/присед|жим ног|разгибани[яей]+ ног|выпад|гакк|болгар|squat|leg press|leg ext|lunge/i,'Квадрицепс'],
+  [/трицепс|француз|разгибани|pushdown|tricep|skull/i,'Трицепс'],
+  [/бицепс|сгибани|молот|скотт|curl/i,'Бицепс'],
+  [/плеч|мах|дельт|армейск|жим стоя|жим сидя|над голов|обратн[а-я]* бабочк|разведени.*наклон|face ?pull|подбородк|lateral|overhead|shoulder|ohp/i,'Плечи'],
+  [/тяга|подтяг|пуловер|шраг|гребл|row|pull|lat|deadlift|станов/i,'Спина'],
+  [/жим|груд|сведени|бабочк|пек|отжиман|брус|кроссовер|bench|press|fly|chest|dip|push/i,'Грудь'],
+];
+function groupOf(name){
+  const k=low(name);if(S.exGroups[k])return S.exGroups[k];
+  for(const d of S.program?.days||[]){const e=exs(d).find(x=>low(x.n)===k&&x.g);if(e)return normG(e.g)}
+  for(const [re,g] of GUESS)if(re.test(name))return g;
+  return 'Другое';
+}
+const groupList=()=>[...new Set([...GROUPS,...(S.program?.days||[]).flatMap(d=>exs(d).map(e=>e.g&&normG(e.g))).filter(Boolean),...Object.values(S.exGroups),'Другое'])];
+function setGroup(id,g){S.exGroups[low(exOf(id).name)]=g;commit()}
+const targetOf=g=>S.program?.targets?.[g]||(['Предплечья','Пресс','Икры'].includes(g)?[6,12]:[10,20]);
+function weekGroupsCard(){
+  const wd=weekDays(day),cnt={};
+  for(const d of wd)for(const e of S.workouts[d]||[]){const n=e.sets.filter(isWork).length,g=groupOf(e.name);if(n)cnt[g]=(cnt[g]||0)+n}
+  const planned=new Set((S.program?.days||[]).flatMap(d=>exs(d).map(e=>groupOf(e.n))));
+  const gs=groupList().filter(g=>cnt[g]||(g!=='Другое'&&(planned.has(g)||S.program?.targets?.[g])));
+  if(!gs.length)return '';
+  return `<div class="card" id="wg"><h2>Рабочие подходы за неделю<span class="sp"></span><span class="sm mut">${fmtDay(wd[0],{day:'numeric',month:'short'})} – ${fmtDay(wd[6],{day:'numeric',month:'short'})}</span></h2>
+    <div class="wg">${gs.map(g=>{const n=cnt[g]||0;
+      if(g==='Другое')return `<span class="gn">${g}</span><span class="tr"></span><span class="gv"><b>${n}</b></span>`;
+      const [lo,hi]=targetOf(g),mx=Math.max(hi*1.25,n),st=n<lo?'lo':n>hi?'hi':'ok';
+      return `<span class="gn">${g}</span><span class="tr"><span class="zone" style="left:${lo/mx*100}%;width:${(hi-lo)/mx*100}%"></span><i class="${st}" style="width:${n/mx*100}%"></i></span><span class="gv ${st}"><b>${n}</b> / ${lo}–${hi}</span>`}).join('')}</div>
+    <p class="sm mut" style="margin-top:12px">Рабочих подходов всего: ${sum(Object.values(cnt))}, разминка не считается. Зелёная зона — ориентир ${S.program?.targets?'из твоей программы':'10–20 подходов на группу в неделю'}: оранжевый — недобор, красный — перебор. Группу упражнения можно поменять в его карточке.</p></div>`;
 }
 
 // ---------- research popup ----------
