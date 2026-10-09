@@ -693,7 +693,7 @@ function repeatLast(){
   wk(day).push(...S.workouts[d].map(e=>({id:uid(),name:e.name,sets:e.sets.map(s=>({w:'',r:'',done:false,warm:!!s.warm}))})));commit();
 }
 async function delEx(id){if(!await ask('Удалить упражнение из тренировки?'))return;S.workouts[day]=wk(day).filter(e=>e.id!==id);commit()}
-function addSet(id){const e=exOf(id),l=e.sets.filter(s=>!s.warm).at(-1);e.sets.push({w:l?.w??'',r:l?.r??'',done:false,warm:false});commit()}
+function addSet(id){const e=exOf(id),l=e.sets.filter(s=>!s.warm).at(-1);e.sets.push(isCardio(e.name)?{t:l?.t??'',km:l?.km??'',done:false,warm:false}:{w:l?.w??'',r:l?.r??'',done:false,warm:false});commit()}
 function addWarm(id){const e=exOf(id);e.sets.splice(e.sets.filter(s=>s.warm).length,0,{w:'',r:'',done:false,warm:true});commit()}
 // removes the last working set; the last warm-up only when no working sets are left
 function popSet(id){const e=exOf(id),i=e.sets.map(s=>!s.warm).lastIndexOf(true);e.sets.splice(i<0?e.sets.length-1:i,1);commit()}
@@ -702,7 +702,8 @@ function toggleWarm(id,i){const s=exOf(id).sets[i];s.warm=!s.warm;commit()}
 function doneSet(id,i){
   const e=exOf(id),s=e.sets[i],p=prevSet(e,i,prevEx(e.name,day));
   s.done=!s.done;
-  if(s.done){if(s.w===''&&p)s.w=p.w;if(s.r===''&&p)s.r=p.r;startRest(num(S.settings.rest)||120)}
+  if(s.done&&isCardio(e.name)){if(!s.t&&p?.t)s.t=p.t;if(!s.km&&p?.km)s.km=p.km}
+  else if(s.done){if(s.w===''&&p)s.w=p.w;if(s.r===''&&p)s.r=p.r;startRest(num(S.settings.rest)||120)}
   commit();
 }
 
@@ -789,13 +790,14 @@ plan(){
     <input id="gTitle" placeholder="Цель" style="flex:2 1 180px" onkeydown="event.key==='Enter'&&addGoal()"><select id="gParent">${goalOptions('Верхний уровень')}</select><button class="btn-a fit" onclick="addGoal()">Добавить</button></div></div>`;
 },
 gym(){
-  const w=wk(day),vol=dayVolume(day),nSets=sum(w.map(e=>e.sets.filter(isWork).length));
+  const w=wk(day),vol=dayVolume(day),nSets=sum(w.filter(e=>!isCardio(e.name)).map(e=>e.sets.filter(isWork).length));
   const recent=Object.keys(S.workouts).filter(d=>S.workouts[d].length).sort().reverse().slice(0,6);
   const names=[...new Set(Object.values(S.workouts).flat().filter(e=>working(e.sets).length).map(e=>e.name))];
   const sel=names.includes(S.ui.ex)?S.ui.ex:names[0],hist=sel?exHistory(sel).slice(-20):[];
   let prs=0;
   const cards=w.map(e=>{
     const p=prevEx(e.name,day),best=bestBefore(e.name,day),cue=progNote(e.name),pn=prevNote(e.name,day),no={w:0,k:0};
+    if(isCardio(e.name))return cardioCard(e,p,cue,pn);
     const row=i=>{const s=e.sets[i],ps=prevSet(e,i,p),pr=s.done&&!s.warm&&best>0&&e1(s)>best;if(pr)prs++;
       return `<div class="set ${s.warm?'warm':''} ${s.done?'done':''} ${pr?'pr':''}">
       <button class="n ${s.warm?'w':''}" onclick="toggleWarm('${e.id}',${i})" title="${s.warm?'Сделать рабочим':'Сделать разминочным'}">${s.warm?'Р'+(++no.w):++no.k}</button>
@@ -832,7 +834,7 @@ gym(){
     <div class="lbl" style="margin-top:16px">Объём, кг</div>${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:h.vol})))}`
     :'<p class="empty">Завершите хотя бы один подход — здесь появятся графики 1ПМ и объёма.</p>'}</div>
   ${lbCard()}
-  ${recent.length?`<div class="card"><h2>Последние тренировки</h2><div class="list">${recent.map(d=>`<div class="item" onclick="goDay('${d}')" style="cursor:pointer"><div class="t">${fmtDay(d,{weekday:'short',day:'numeric',month:'long'})}<div class="sm mut">${S.workouts[d].map(e=>esc(e.name)).join(', ')}</div></div><span class="sm">${fmt(dayVolume(d))} кг</span></div>`).join('')}</div></div>`:''}`;
+  ${recent.length?`<div class="card"><h2>Последние тренировки</h2><div class="list">${recent.map(d=>`<div class="item" onclick="goDay('${d}')" style="cursor:pointer"><div class="t">${fmtDay(d,{weekday:'short',day:'numeric',month:'long'})}<div class="sm mut">${S.workouts[d].map(e=>esc(e.name)).join(', ')}</div></div><span class="sm">${[dayVolume(d)&&fmt(dayVolume(d))+' кг',dayCardio(d)&&r1(dayCardio(d))+' мин'].filter(Boolean).join(' · ')||'—'}</span></div>`).join('')}</div></div>`:''}`;
 },
 body(){
   const w=lastWeight(),fw=weights()[0],names=liftNames(),ex=names.includes(S.ui.ex)?S.ui.ex:names[0],hist=ex?exHistory(ex).slice(-30):[];
@@ -1184,9 +1186,10 @@ function progCard(){
 }
 
 // ---------- muscle groups: weekly working sets per group ----------
-const GROUPS=['Грудь','Спина','Плечи','Бицепс','Трицепс','Предплечья','Пресс','Квадрицепс','Бицепс бедра','Ягодицы','Икры'];
+const GROUPS=['Грудь','Спина','Плечи','Бицепс','Трицепс','Предплечья','Пресс','Квадрицепс','Бицепс бедра','Ягодицы','Икры','Кардио'];
 // ponytail: keyword guess from the exercise name; the program's «Группа» column or the user's pick wins
 const GUESS=[
+  [/кардио|дорожк|велотренаж|велосипед|эллипс|орбитрек|степпер|скакалк|плаван|гребн[а-я]* тренаж|^ходьб|(^|\s)бег|cardio|treadmill|elliptical|stair|jump rope|cycling|rowing machine|hiit|^(run|jog|walk|bike|swim)/i,'Кардио'],
   [/предплеч|запяст|forearm|wrist/i,'Предплечья'],
   [/пресс|скручив|планк|подъ[её]мы? ног|crunch|plank|\babs?\b/i,'Пресс'],
   [/носк|икр|calf/i,'Икры'],
@@ -1207,10 +1210,31 @@ function groupOf(name){
 }
 const groupList=()=>[...new Set([...GROUPS,...(S.program?.days||[]).flatMap(d=>exs(d).map(e=>e.g&&normG(e.g))).filter(Boolean),...Object.values(S.exGroups),'Другое'])];
 function setGroup(id,g){S.exGroups[low(exOf(id).name)]=g;commit()}
-const targetOf=g=>S.program?.targets?.[g]||(['Предплечья','Пресс','Икры'].includes(g)?[6,12]:[10,20]);
+const isCardio=name=>groupOf(name)==='Кардио';
+const dayCardio=d=>sum((S.workouts[d]||[]).filter(e=>isCardio(e.name)).flatMap(e=>e.sets.filter(isWork)).map(s=>num(s.t)));
+// cardio is counted in minutes; 150–300 min/week of moderate activity is the WHO guideline
+const targetOf=g=>g==='Кардио'?[150,300]:S.program?.targets?.[g]||(['Предплечья','Пресс','Икры'].includes(g)?[6,12]:[10,20]);
+const fmtPace=m=>{const x=Math.round(m*60);return `${Math.floor(x/60)}:${String(x%60).padStart(2,'0')}`};
+// cardio card: minutes + km per segment instead of kg × reps; no warm-ups, no rest timer
+function cardioCard(e,p,cue,pn){
+  const g=groupOf(e.name),done=e.sets.filter(isWork),T=sum(done.map(s=>num(s.t))),K=sum(done.map(s=>num(s.km)));
+  const rows=e.sets.map((s,i)=>{const ps=prevSet(e,i,p);
+    return `<div class="set ${s.done?'done':''}"><span class="n">${i+1}</span>
+      <span class="prev">${ps?.t?`${esc(ps.t)} мин${ps.km?`<br>${esc(ps.km)} км`:''}`:'—'}</span>
+      <input inputmode="decimal" value="${esc(s.t)}" placeholder="${esc(ps?.t||'мин')}" oninput="setVal('${e.id}',${i},'t',this.value)" aria-label="Минуты">
+      <input inputmode="decimal" value="${esc(s.km)}" placeholder="${esc(ps?.km||'км')}" oninput="setVal('${e.id}',${i},'km',this.value)" aria-label="Километры">
+      <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Отрезок выполнен"></button></div>`}).join('');
+  return `<div class="card"><h2>${esc(e.name)}<span class="sp"></span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
+    ${cue?`<div class="cue"><span class="lbl">Из программы</span>${esc(cue)}</div>`:''}
+    ${pn?`<div class="cue mine"><span class="lbl">Твоя заметка · ${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div>`:''}
+    <div class="set h"><span>№</span><span>Прошлый</span><span>Минуты</span><span>Км</span><span></span></div>${rows}
+    <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ Отрезок</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="Убрать отрезок">−</button>`:''}</div>
+    ${T?`<div class="sm" style="margin-top:10px">Итого: <b>${r1(T)} мин</b>${K?` · <b>${r1(K)} км</b> · темп ${fmtPace(T/K)} мин/км · ${r1(K/T*60)} км/ч`:''}</div>`:''}
+    <textarea class="exnote" rows="1" placeholder="Заметка: пульс, уклон, уровень, самочувствие" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea></div>`;
+}
 function weekGroupsCard(){
   const wd=weekDays(day),cnt={};
-  for(const d of wd)for(const e of S.workouts[d]||[]){const n=e.sets.filter(isWork).length,g=groupOf(e.name);if(n)cnt[g]=(cnt[g]||0)+n}
+  for(const d of wd)for(const e of S.workouts[d]||[]){const g=groupOf(e.name),n=g==='Кардио'?sum(e.sets.filter(isWork).map(s=>num(s.t))):e.sets.filter(isWork).length;if(n)cnt[g]=(cnt[g]||0)+n}
   const planned=new Set((S.program?.days||[]).flatMap(d=>exs(d).map(e=>groupOf(e.n))));
   const gs=groupList().filter(g=>cnt[g]||(g!=='Другое'&&(planned.has(g)||S.program?.targets?.[g])));
   if(!gs.length)return '';
@@ -1218,8 +1242,8 @@ function weekGroupsCard(){
     <div class="wg">${gs.map(g=>{const n=cnt[g]||0;
       if(g==='Другое')return `<span class="gn">${g}</span><span class="tr"></span><span class="gv"><b>${n}</b></span>`;
       const [lo,hi]=targetOf(g),mx=Math.max(hi*1.25,n),st=n<lo?'lo':n>hi?'hi':'ok';
-      return `<span class="gn">${g}</span><span class="tr"><span class="zone" style="left:${lo/mx*100}%;width:${(hi-lo)/mx*100}%"></span><i class="${st}" style="width:${n/mx*100}%"></i></span><span class="gv ${st}"><b>${n}</b> / ${lo}–${hi}</span>`}).join('')}</div>
-    <p class="sm mut" style="margin-top:12px">Рабочих подходов всего: ${sum(Object.values(cnt))}, разминка не считается. Зелёная зона — ориентир ${S.program?.targets?'из твоей программы':'10–20 подходов на группу в неделю'}: оранжевый — недобор, красный — перебор. Группу упражнения можно поменять в его карточке.</p></div>`;
+      return `<span class="gn">${g}</span><span class="tr"><span class="zone" style="left:${lo/mx*100}%;width:${(hi-lo)/mx*100}%"></span><i class="${st}" style="width:${n/mx*100}%"></i></span><span class="gv ${st}"><b>${r1(n)}</b> / ${lo}–${hi}${g==='Кардио'?' мин':''}</span>`}).join('')}</div>
+    <p class="sm mut" style="margin-top:12px">Рабочих подходов всего: ${sum(Object.entries(cnt).filter(([g])=>g!=='Кардио').map(([,v])=>v))}, разминка не считается.${gs.includes('Кардио')?' Кардио считается в минутах: ориентир ВОЗ — 150–300 минут умеренной нагрузки в неделю.':''} Зелёная зона — ориентир ${S.program?.targets?'из твоей программы':'10–20 подходов на группу в неделю'}: оранжевый — недобор, красный — перебор. Группу упражнения можно поменять в его карточке.</p></div>`;
 }
 
 // ---------- research popup ----------
