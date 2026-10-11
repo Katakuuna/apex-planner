@@ -183,12 +183,16 @@ main.soft{animation:fadeBg .25s ease}
 .ov .tr::before{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--hair)}
 .ov .tr i{position:absolute;top:0;bottom:0;border-radius:4px}.ov .tr i.g{background:var(--ok)}.ov .tr i.b{background:var(--acc2)}
 .enter .ov .tr i{animation:fill .9s .2s var(--ease) backwards}
-.lb{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px}
-.lb li{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:#ffffff06;box-shadow:inset 0 0 0 .5px var(--hair-soft)}
-.lb li.me{background:linear-gradient(90deg,#9b1b3066,#9b1b301a);box-shadow:inset 0 0 0 1px var(--hair)}
-.lb .md{width:28px;text-align:center;font-size:18px}.lb .rk{font-size:13px;color:var(--mut);font-weight:600}
-.lb .nm{flex:1;min-width:0;display:flex;flex-direction:column;overflow-wrap:anywhere}.lb .nm small{font-size:12px;color:var(--mut)}
-.lb b{font-variant-numeric:tabular-nums;font-size:17px;white-space:nowrap}.lb b small{font-size:12px;color:var(--mut);font-weight:400}
+.lbbar{display:flex;gap:8px;align-items:center;margin-bottom:6px}.lbbar select{flex:1 1 auto;min-width:0;padding:7px 10px;font-size:14px}.lbbar .seg{margin:0;flex-wrap:nowrap;margin-left:auto}
+.lb{list-style:none;padding:0;display:flex;flex-direction:column}
+.lb li{display:flex;align-items:center;gap:12px;padding:10px 6px;border-bottom:.5px solid var(--hair-soft)}.lb li:last-child{border-bottom:0}
+.lb li.me{background:#9b1b3038;border-radius:10px;border-bottom-color:transparent}
+.lb .rk{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;font-size:12px;font-weight:700;color:var(--mut);font-variant-numeric:tabular-nums}
+.lb .rk.r1{background:#c9a227;color:#1a1300}.lb .rk.r2{background:#a5a7ab;color:#121212}.lb .rk.r3{background:#a8693a;color:#170b00}
+.lb .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb b{font-variant-numeric:tabular-nums;font-size:16px;white-space:nowrap}.lb b small{font-size:12px;color:var(--mut);font-weight:400}
+.lb .gap{justify-content:center;color:var(--mut);padding:0;border:0;line-height:1}
+.lbmore,.lbmore:hover{width:100%;margin-top:6px;background:none;box-shadow:none;color:var(--rose);font-size:13px;padding:6px}
 .enter .lb li{animation:rise .5s var(--ease) backwards}.enter .lb li:nth-child(2){animation-delay:.05s}.enter .lb li:nth-child(3){animation-delay:.1s}.enter .lb li:nth-child(n+4){animation-delay:.15s}
 .seg.mini button{font-size:12px;padding:5px 10px}
 .pday{padding:12px;border-radius:14px;background:#ffffff06;box-shadow:inset 0 0 0 .5px var(--hair-soft);margin-bottom:10px}
@@ -510,7 +514,7 @@ async function publishLifts(){
     S.ui.pubSig=sig;localSave();lbAt=0;
   }catch(e){console.warn('leaderboard publish failed',e)}
 }
-let LB={ex:null,rel:false,rows:[],exs:[],week:[]},lbAt=0,lbBusy=false;
+let LB={ex:null,mode:'abs',all:false,rows:[],exs:[],week:[]},lbAt=0,lbBusy=false;
 async function lbLoad(force){
   if(!sbUser||lbBusy||(!force&&Date.now()-lbAt<30000))return;
   lbBusy=true;
@@ -527,21 +531,26 @@ async function lbLoad(force){
   const c=$('#lb');if(c){c.outerHTML=lbCard();const n=$('#lb');n.classList.add('enter');setTimeout(()=>n.classList.remove('enter'),1300)}
 }
 function lbPick(k){LB.ex=k;lbLoad(true)}
-function lbMode(rel){LB.rel=rel;const c=$('#lb');if(c)c.outerHTML=lbCard()}
+const lbRedraw=()=>{const c=$('#lb');if(c)c.outerHTML=lbCard()};
+function lbMode(m){LB.mode=m;LB.all=false;lbRedraw()}
+function lbAll(){LB.all=!LB.all;lbRedraw()}
 function lbCard(){
   if(!sb)return '';
-  if(!sbUser)return `<div class="card hot" id="lb"><h2>🏆 Таблица лидеров</h2><button class="btn-a" onclick="openSettings()">Войти, чтобы участвовать</button></div>`;
-  if(!lbAt){lbLoad();return '<div class="card hot" id="lb"><h2>🏆 Таблица лидеров</h2><p class="empty">Загружаю…</p></div>'}
-  const rows=[...LB.rows].map(r=>({...r,score:LB.rel?(r.bodyweight?r.e1rm/r.bodyweight:0):r.e1rm})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score);
-  const medal=i=>['🥇','🥈','🥉'][i]||`<span class="rk">${i+1}</span>`;
-  return `<div class="card hot" id="lb"><h2>🏆 Таблица лидеров<span class="sp"></span><button class="ico" onclick="lbLoad(true)" aria-label="Обновить">↻</button></h2>
-    ${LB.exs.length?`<div class="seg">${LB.exs.map(x=>`<button class="${x.k===LB.ex?'on':''}" onclick="lbPick(this.dataset.k)" data-k="${esc(x.k)}">${esc(x.name)} <span class="mut">${x.n}</span></button>`).join('')}</div>
-    <div class="seg mini"><button class="${LB.rel?'':'on'}" onclick="lbMode(false)">Абсолютный 1ПМ</button><button class="${LB.rel?'on':''}" onclick="lbMode(true)">Относительно веса тела</button></div>
-    <ol class="lb">${rows.map((r,i)=>`<li class="${r.user_id===sbUser.id?'me':''}"><span class="md">${medal(i)}</span><span class="nm">${esc(r.profiles.username)}${r.user_id===sbUser.id?' <span class="chip">ты</span>':''}<small>${r.weight} кг × ${r.reps} · ${fmtDay(r.achieved_on,{day:'numeric',month:'short'})}</small></span><b>${LB.rel?r1(r.score)+'<small> × вес</small>':r1(r.e1rm)+'<small> кг</small>'}</b></li>`).join('')||'<p class="empty">Нет данных о весе тела.</p>'}</ol>`
-    :'<p class="empty">Пока пусто — стань первым.</p>'}
-    <div class="lbl" style="margin-top:18px">Объём за эту неделю</div>
-    ${LB.week.length?`<ol class="lb">${LB.week.map((r,i)=>`<li class="${r.id===sbUser.id?'me':''}"><span class="md">${medal(i)}</span><span class="nm">${esc(r.username)}</span><b>${fmt(r.week_volume)}<small> кг</small></b></li>`).join('')}</ol>`:'<p class="empty">Пока пусто.</p>'}
-    </div>`;
+  if(!sbUser)return `<div class="card" id="lb"><h2>🏆 Лидеры</h2><button class="btn-a" onclick="openSettings()">Войти, чтобы участвовать</button></div>`;
+  if(Date.now()-lbAt>30000)lbLoad(); // refreshes the card itself when the data arrives
+  if(!lbAt)return '<div class="card" id="lb"><h2>🏆 Лидеры</h2><p class="empty">Загружаю…</p></div>';
+  // one list at a time: best lift (absolute or per kg of bodyweight) or this week's volume; top 5 + your own row
+  const wk=LB.mode==='week',rel=LB.mode==='rel',N=5;
+  const list=wk?LB.week.map(r=>({id:r.id,name:r.username,v:r.week_volume}))
+    :LB.rows.map(r=>({id:r.user_id,name:r.profiles.username,v:rel?(r.bodyweight?r.e1rm/r.bodyweight:0):r.e1rm})).filter(r=>r.v>0).sort((a,b)=>b.v-a.v);
+  const me=list.findIndex(r=>r.id===sbUser.id),shown=LB.all?list:list.slice(0,N);
+  const row=(r,i)=>`<li class="${r.id===sbUser.id?'me':''}"><span class="rk ${i<3?'r'+(i+1):''}">${i+1}</span><span class="nm">${esc(r.name)}</span><b>${wk?fmt(r.v)+'<small> кг</small>':rel?r.v.toFixed(2)+'<small> ×</small>':r1(r.v)+'<small> кг</small>'}</b></li>`;
+  return `<div class="card" id="lb"><h2>🏆 Лидеры</h2>
+    <div class="lbbar">${!wk&&LB.exs.length?`<select onchange="lbPick(this.value)" aria-label="Упражнение">${LB.exs.map(x=>`<option value="${esc(x.k)}" ${x.k===LB.ex?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`:''}
+      <div class="seg mini">${[['abs','1ПМ'],['rel','÷ вес'],['week','Неделя']].map(([k,n])=>`<button class="${LB.mode===k?'on':''}" onclick="lbMode('${k}')">${n}</button>`).join('')}</div></div>
+    ${list.length?`<ol class="lb">${shown.map(row).join('')}${!LB.all&&me>=N?`<li class="gap">⋯</li>${row(list[me],me)}`:''}</ol>
+      ${list.length>N?`<button class="lbmore" onclick="lbAll()">${LB.all?'Свернуть':'Все '+list.length}</button>`:''}`
+    :'<p class="empty">Пока пусто</p>'}</div>`;
 }
 
 // ---------- navigation ----------
