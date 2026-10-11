@@ -32,7 +32,8 @@ h2 .sp{flex:1}
 /* surfaces */
 .card{background:radial-gradient(120% 90% at 0 0,#9b1b3024,transparent 55%),var(--card);box-shadow:inset 0 0 0 1px var(--hair-soft);border-radius:var(--r);padding:18px;margin-bottom:14px}
 .card.hot{background:linear-gradient(155deg,#9b1b3070,#9b1b3014 55%,transparent 80%),var(--card);box-shadow:inset 0 0 0 1px var(--hair),0 12px 40px #9b1b301f}
-.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:14px}.grid .card{margin:0}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px}
+.grid.g3{grid-template-columns:repeat(3,1fr);gap:8px}.grid.g3 .card{padding:12px 14px}.grid.g3 .big{font-size:24px}.grid.g3 .lbl{font-size:10px;letter-spacing:.04em}.grid .card{margin:0}
 .big{font-size:32px;font-weight:700;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}.big small{font-size:14px;color:var(--mut);font-weight:400}
 .mut{color:var(--mut)}.up{color:var(--ok)}.down{color:var(--acc2)}.sm{font-size:13px}
 .bar{height:6px;background:#e0364f24;border-radius:3px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:3px;max-width:100%;transform-origin:left}
@@ -194,7 +195,9 @@ main.soft{animation:fadeBg .25s ease}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
 .chips .chip{display:inline-flex;align-items:center;gap:2px;padding:4px 4px 4px 10px;font-size:13px}.chips .x{font-size:16px;padding:0 4px}
 .cue{padding:10px 12px;border-radius:12px;background:#9b1b301f;font-size:13px;line-height:1.45;margin-bottom:10px;color:#ecd3d8}
-.cue .lbl{display:block;margin-bottom:2px;font-size:10.5px}
+.cue .lbl{margin-right:6px;font-size:10.5px}
+.cue{cursor:pointer}.cue .cl{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.cue.open .cl{display:block}
+.exh{align-items:flex-start}.exh .exn{flex:1 1 auto;min-width:0}.exh .gsel{max-width:42%}
 .cue.mine{background:#ffffff08;color:var(--txt)}
 .exnote,.cmt{min-height:0;resize:none;field-sizing:content;line-height:1.4}
 .exnote{margin-top:10px;font-size:14px}
@@ -214,6 +217,7 @@ select.gsel{width:auto;flex:0 0 auto;padding:3px 8px;font-size:12px;font-weight:
 .enter .wg i{animation:fill .9s .2s var(--ease) backwards}
 .neu{color:var(--rose)}.ov .tr i.n{background:var(--rose)}
 .verdict{font-weight:600;font-size:16px;margin-bottom:12px}.verdict.g{color:var(--ok)}.verdict.b{color:#ff8597}.verdict.n{color:var(--rose)}
+.dot.n{background:var(--rose)}
 .vd{width:10px;height:10px;border-radius:50%;flex:0 0 auto;background:var(--rose)}.vd.g{background:var(--ok)}.vd.b{background:var(--acc2)}
 .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 12px;margin-bottom:6px}
 </style>
@@ -224,7 +228,7 @@ select.gsel{width:auto;flex:0 0 auto;padding:3px 8px;font-size:12px;font-weight:
   <div class="datebar">
     <button class="ico" onclick="goDay(addDays(day,-1))" aria-label="Предыдущий день">‹</button>
     <button id="date" onclick="openCal()" title="Открыть календарь"></button>
-    <button class="ico" onclick="goDay(today())">Сегодня</button>
+    <button class="ico" id="todayBtn" onclick="goDay(today())">Сегодня</button>
     <button class="ico" onclick="goDay(addDays(day,1))" aria-label="Следующий день">›</button>
   </div>
 </header>
@@ -261,14 +265,14 @@ select.gsel{width:auto;flex:0 0 auto;padding:3px 8px;font-size:12px;font-weight:
 <dialog id="meas" aria-label="Замеры">
   <h2>Замеры · <span id="measD"></span><span class="sp"></span><button class="x" onclick="meas.close()" aria-label="Закрыть">×</button></h2>
   <div class="mgrid" id="measF"></div>
-  <p class="sm mut" style="margin-bottom:14px">Мерь утром натощак, лента без натяжения. Мышцы — по самому широкому месту в расслабленном виде, талию — по самому узкому. Пустое поле — без записи.</p>
+  <p class="sm mut" style="margin-bottom:14px">Утром натощак. Талия — по самому узкому месту.</p>
   <div class="row"><button onclick="meas.close()">Отмена</button><button class="btn-a" onclick="saveMeas()">Сохранить</button></div>
 </dialog>
 <input type="file" id="progFile" accept=".xlsx,.txt,.md,.csv,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden onchange="progImport(this)">
 <dialog id="progTxt" aria-label="Вставить программу">
   <h2>Вставь программу<span class="sp"></span><button class="x" onclick="progTxt.close()" aria-label="Закрыть">×</button></h2>
   <textarea id="progTxtIn" style="min-height:220px" placeholder="День 1 — Грудь&#10;Жим штанги лёжа 4x8&#10;Разводка гантелей 3x12&#10;&#10;День 2 — Спина&#10;Подтягивания&#10;Тяга штанги в наклоне"></textarea>
-  <p class="sm mut" style="margin:8px 0 14px">Подойдёт текст из заметок, Word, Google Docs, PDF или ячейки из Excel вместе со строкой заголовков — тогда подтянется и колонка с комментариями. Подходы и повторы можно оставить: приложение их не подставляет.</p>
+  <p class="sm mut" style="margin:8px 0 14px">Заметки, Word, PDF или ячейки Excel вместе с заголовками.</p>
   <div class="row"><button onclick="progTxt.close()">Отмена</button><button class="btn-a" onclick="progFromText($('#progTxtIn').value);progTxt.close()">Разобрать</button></div>
 </dialog>
 <dialog id="ask"><form method="dialog"><p id="askT" style="margin-bottom:16px;line-height:1.5"></p><div class="row"><button value="no">Отмена</button><button value="ok" class="btn-a">Да</button></div></form></dialog>
@@ -479,11 +483,11 @@ function renderAccount(){
   const el=$('#acct');if(!el)return;
   if(!sb){el.hidden=true;return}
   el.hidden=false;
-  el.innerHTML=sbUser?`<div class="sm mut" style="margin-bottom:8px">Ты вошёл как <b style="color:var(--txt)">${esc(sbUser.email)}</b>. Данные синхронизируются между всеми устройствами.</div>
+  el.innerHTML=sbUser?`<div class="sm mut" style="margin-bottom:8px">☁︎ ${esc(sbUser.email)}</div>
     <label>Имя в рейтинге<input id="acName" value="${esc(profile?.username||'')}" maxlength="24"></label>
     <label style="display:flex;gap:8px;align-items:center;color:var(--txt)"><input id="acPub" type="checkbox" style="width:auto" ${profile?.public!==false?'checked':''}>Показывать меня в таблице лидеров</label>
     <div class="row"><button class="btn-a" onclick="saveProfile()">Сохранить профиль</button><button onclick="sbOut()">Выйти</button></div>`
-  :`<div class="sm mut" style="margin-bottom:8px">${acMode==='up'?'Новый аккаунт: данные будут на всех устройствах, и ты появишься в таблице лидеров. iPhone предложит надёжный пароль и сохранит его.':'Войди, чтобы данные были на всех устройствах и чтобы соревноваться с друзьями. На iPhone пароль подставится по Face ID.'}</div>
+  :`<div class="sm mut" style="margin-bottom:8px">Синхронизация между устройствами и таблица лидеров.</div>
     <form onsubmit="event.preventDefault();sbAuth(acMode)">
     <label>Почта<input id="acEmail" type="email" name="email" autocomplete="username" inputmode="email" autocapitalize="off" required></label>
     <label>Пароль<input id="acPass" type="password" name="password" autocomplete="${acMode==='up'?'new-password':'current-password'}" minlength="6" required></label>
@@ -526,18 +530,18 @@ function lbPick(k){LB.ex=k;lbLoad(true)}
 function lbMode(rel){LB.rel=rel;const c=$('#lb');if(c)c.outerHTML=lbCard()}
 function lbCard(){
   if(!sb)return '';
-  if(!sbUser)return `<div class="card hot" id="lb"><h2>🏆 Таблица лидеров</h2><p class="sm mut" style="margin-bottom:12px">Соревнуйся с друзьями по жиму, приседу, тяге и объёму за неделю. Нужен аккаунт — он же синхронизирует данные между телефоном и компьютером.</p><button class="btn-a" onclick="openSettings()">Войти или создать аккаунт</button></div>`;
+  if(!sbUser)return `<div class="card hot" id="lb"><h2>🏆 Таблица лидеров</h2><button class="btn-a" onclick="openSettings()">Войти, чтобы участвовать</button></div>`;
   if(!lbAt){lbLoad();return '<div class="card hot" id="lb"><h2>🏆 Таблица лидеров</h2><p class="empty">Загружаю…</p></div>'}
   const rows=[...LB.rows].map(r=>({...r,score:LB.rel?(r.bodyweight?r.e1rm/r.bodyweight:0):r.e1rm})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score);
   const medal=i=>['🥇','🥈','🥉'][i]||`<span class="rk">${i+1}</span>`;
   return `<div class="card hot" id="lb"><h2>🏆 Таблица лидеров<span class="sp"></span><button class="ico" onclick="lbLoad(true)" aria-label="Обновить">↻</button></h2>
     ${LB.exs.length?`<div class="seg">${LB.exs.map(x=>`<button class="${x.k===LB.ex?'on':''}" onclick="lbPick(this.dataset.k)" data-k="${esc(x.k)}">${esc(x.name)} <span class="mut">${x.n}</span></button>`).join('')}</div>
     <div class="seg mini"><button class="${LB.rel?'':'on'}" onclick="lbMode(false)">Абсолютный 1ПМ</button><button class="${LB.rel?'on':''}" onclick="lbMode(true)">Относительно веса тела</button></div>
-    <ol class="lb">${rows.map((r,i)=>`<li class="${r.user_id===sbUser.id?'me':''}"><span class="md">${medal(i)}</span><span class="nm">${esc(r.profiles.username)}${r.user_id===sbUser.id?' <span class="chip">ты</span>':''}<small>${r.weight} кг × ${r.reps} · ${fmtDay(r.achieved_on,{day:'numeric',month:'short'})}</small></span><b>${LB.rel?r1(r.score)+'<small> × вес</small>':r1(r.e1rm)+'<small> кг</small>'}</b></li>`).join('')||'<p class="empty">Для относительного рейтинга участникам нужно записать вес тела.</p>'}</ol>`
-    :'<p class="empty">Пока никто не записал подходы. Отметь подход во вкладке «Зал» — и ты первый в таблице.</p>'}
+    <ol class="lb">${rows.map((r,i)=>`<li class="${r.user_id===sbUser.id?'me':''}"><span class="md">${medal(i)}</span><span class="nm">${esc(r.profiles.username)}${r.user_id===sbUser.id?' <span class="chip">ты</span>':''}<small>${r.weight} кг × ${r.reps} · ${fmtDay(r.achieved_on,{day:'numeric',month:'short'})}</small></span><b>${LB.rel?r1(r.score)+'<small> × вес</small>':r1(r.e1rm)+'<small> кг</small>'}</b></li>`).join('')||'<p class="empty">Нет данных о весе тела.</p>'}</ol>`
+    :'<p class="empty">Пока пусто — стань первым.</p>'}
     <div class="lbl" style="margin-top:18px">Объём за эту неделю</div>
-    ${LB.week.length?`<ol class="lb">${LB.week.map((r,i)=>`<li class="${r.id===sbUser.id?'me':''}"><span class="md">${medal(i)}</span><span class="nm">${esc(r.username)}</span><b>${fmt(r.week_volume)}<small> кг</small></b></li>`).join('')}</ol>`:'<p class="empty">На этой неделе ещё никто не тренировался.</p>'}
-    <p class="sm mut" style="margin-top:12px">Рейтинг по расчётному 1ПМ (формула Эпли) из твоего лучшего рабочего подхода. Скрыть себя можно в ⚙︎.</p></div>`;
+    ${LB.week.length?`<ol class="lb">${LB.week.map((r,i)=>`<li class="${r.id===sbUser.id?'me':''}"><span class="md">${medal(i)}</span><span class="nm">${esc(r.username)}</span><b>${fmt(r.week_volume)}<small> кг</small></b></li>`).join('')}</ol>`:'<p class="empty">Пока пусто.</p>'}
+    </div>`;
 }
 
 // ---------- navigation ----------
@@ -568,7 +572,9 @@ addEventListener('pointerdown',e=>{
 function render(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
   $('#title').textContent=TITLES[tab];
-  $('#date').textContent=fmtDay(day)+(day===today()?' · сегодня':'');
+  const isToday=day===today();
+  $('#date').textContent=isToday?'Сегодня, '+new Date(day+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):fmtDay(day,{weekday:'short',day:'numeric',month:'long'});
+  $('#todayBtn').hidden=isToday;
   $('main').innerHTML=V[tab]();
   if(tab==='gym')sciAuto();
   if(pressPath){let el=$('main');for(const i of pressPath)el=el?.children[i];el?.classList.add('pop');pressPath=null}
@@ -644,7 +650,7 @@ async function delGoal(id){
   S.goals=S.goals.filter(x=>x.id!==id);commit();
 }
 function goalTree(){
-  if(!S.goals.length)return '<p class="empty">Добавьте цель на год, затем разбейте её на месяц и неделю. Задачи дня можно привязать к любой цели.</p>';
+  if(!S.goals.length)return '<p class="empty">Целей пока нет.</p>';
   const node=(g,dep)=>{const [d,t]=goalProg(g.id);return `<div class="item ${g.done?'done':''}" style="margin-left:${dep*18}px;border-left:3px solid ${dep?'#3a3a3e':'var(--acc2)'}">
     <button class="chk ${g.done?'on':''}" onclick="toggleGoal('${g.id}')" aria-label="Достигнута"></button>
     <div class="t"><div class="lbl" style="margin:0;color:${dep?'var(--mut)':'var(--acc2)'}">${LV[g.level]}</div>${esc(g.title)}</div>
@@ -748,7 +754,7 @@ function weightStats(){
   if(days<7)return null;
   const weekly=(lv-fv)/days*7,pw=weekly/lv*100,goal=num(S.settings.goalWeight),bulk=goal>lv;
   const [lo,hi]=bulk?[.25,.5]:[-1,-.5];
-  const zone=pw<lo?(bulk?'медленнее рекомендованного':'быстрее рекомендованного — риск потери мышц'):pw>hi?(bulk?'быстрее рекомендованного — больше жира':'медленнее рекомендованного'):'в рекомендованной зоне';
+  const zone=pw<lo?(bulk?'медленно':'слишком быстро'):pw>hi?(bulk?'слишком быстро':'медленно'):'в норме';
   const eta=(goal-lv)/weekly>0?Math.ceil((goal-lv)/weekly):null;
   return {weekly,pw,zone,eta,bulk};
 }
@@ -762,7 +768,7 @@ home(){
   <div class="card"><div class="lbl">Задачи на день</div><div class="big">${dn} / ${t.length}</div><div class="bar"><i style="width:${t.length?dn/t.length*100:0}%"></i></div></div>
   <div class="card"><div class="lbl">Объём за неделю</div><div class="big">${fmt(vs)} <small>кг</small></div><div class="sm ${vs>=pv?'up':'down'}">${pv?pct(vs,pv)+' к прошлой неделе':'<span class="mut">нет данных за прошлую неделю</span>'}</div></div>
   <div class="card"><div class="lbl">Питание</div><div class="big">${fmt(tot.kcal)} <small>/ ${fmt(st.kcal)} ккал</small></div><div class="sm mut">Б ${fmt(tot.p)} · Ж ${fmt(tot.f)} · У ${fmt(tot.c)}</div></div>
-  <div class="card"><div class="lbl">Вес</div><div class="big">${w?w.kg:'—'} <small>кг → ${st.goalWeight}</small></div><div class="sm ${ws&&(ws.weekly>0)===ws.bulk?'up':'mut'}">${ws?`${ws.weekly>0?'+':''}${r1(ws.weekly)} кг/нед`:'добавьте замеры во вкладке «Питание»'}</div></div>
+  <div class="card"><div class="lbl">Вес</div><div class="big">${w?w.kg:'—'} <small>кг → ${st.goalWeight}</small></div><div class="sm ${ws&&(ws.weekly>0)===ws.bulk?'up':'mut'}">${ws?`${ws.weekly>0?'+':''}${r1(ws.weekly)} кг/нед`:'нет замеров'}</div></div>
   </div>
   <div class="card hot"><h2>Объём тренировок за неделю, кг</h2>${bars(wd.map((d,i)=>({l:fmtDay(d,{weekday:'short'}),v:vol[i],on:d===day})))}</div>
   <div class="card"><h2>Задачи<span class="sp"></span><button onclick="go('plan')">Планер ›</button></h2>${taskList(day)}</div>
@@ -783,7 +789,7 @@ plan(){
   <div class="card"><h2>Заметки дня</h2><textarea placeholder="#теги, мысли, самочувствие, [[ссылки на цели]]…" oninput="S.notes[day]=this.value;save()">${esc(S.notes[day])}</textarea></div>
   <div class="card"><h2>Привычки недели</h2>
     ${S.habits.length?`<table class="hab"><tr><th></th>${wd.map(d=>`<th>${fmtDay(d,{weekday:'short'})}</th>`).join('')}<th></th></tr>
-    ${S.habits.map(h=>`<tr><td>${esc(h.name)} <span class="sm mut">🔥${streak(h.id)}</span></td>${wd.map(d=>`<td><button class="chk ${habitOn(d,h.id)?'on':''}" onclick="toggleHabit('${d}','${h.id}')"></button></td>`).join('')}<td><button class="x" onclick="delHabit('${h.id}')">×</button></td></tr>`).join('')}</table>`:'<p class="empty">Например: сон 8 ч, 10 000 шагов, креатин, чтение.</p>'}
+    ${S.habits.map(h=>`<tr><td>${esc(h.name)} <span class="sm mut">🔥${streak(h.id)}</span></td>${wd.map(d=>`<td><button class="chk ${habitOn(d,h.id)?'on':''}" onclick="toggleHabit('${d}','${h.id}')"></button></td>`).join('')}<td><button class="x" onclick="delHabit('${h.id}')">×</button></td></tr>`).join('')}</table>`:'<p class="empty">Например: сон 8 ч, шаги, креатин.</p>'}
     <div class="row" style="margin-top:12px"><input id="hName" placeholder="Новая привычка" onkeydown="event.key==='Enter'&&addHabit()"><button class="fit" onclick="addHabit()">Добавить</button></div></div>
   <div class="card"><h2>Цели: Год → Месяц → Неделя</h2>${goalTree()}
     <div class="row" style="margin-top:12px"><select id="gLevel" class="fit" style="width:auto">${Object.entries(LV).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
@@ -792,8 +798,7 @@ plan(){
 gym(){
   const w=wk(day),vol=dayVolume(day),nSets=sum(w.filter(e=>!isCardio(e.name)).map(e=>e.sets.filter(isWork).length));
   const recent=Object.keys(S.workouts).filter(d=>S.workouts[d].length).sort().reverse().slice(0,6);
-  const names=[...new Set(Object.values(S.workouts).flat().filter(e=>working(e.sets).length).map(e=>e.name))];
-  const sel=names.includes(S.ui.ex)?S.ui.ex:names[0],hist=sel?exHistory(sel).slice(-20):[];
+
   let prs=0;
   const cards=w.map(e=>{
     const p=prevEx(e.name,day),best=bestBefore(e.name,day),cue=progNote(e.name),pn=prevNote(e.name,day),no={w:0,k:0};
@@ -806,33 +811,27 @@ gym(){
       <input inputmode="numeric" value="${esc(s.r)}" placeholder="${esc(ps?.r||'повт')}" oninput="setVal('${e.id}',${i},'r',this.value)" aria-label="Повторы">
       <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Подход выполнен"></button></div>`};
     const idx=e.sets.map((s,i)=>i),warm=idx.filter(i=>e.sets[i].warm),work=idx.filter(i=>!e.sets[i].warm),g=groupOf(e.name);
-    const rows=(warm.length?`<div class="warm-h">Разминка · не идёт в рабочие подходы</div>${warm.map(row).join('')}${work.length?'<div class="warm-h work">Рабочие</div>':''}`:'')+work.map(row).join('');
-    return `<div class="card"><h2>${esc(e.name)}${e.sets.some(s=>s.done&&!s.warm&&best>0&&e1(s)>best)?' <span class="chip">🔥 Рекорд</span>':''}<span class="sp"></span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
-    ${cue?`<div class="cue"><span class="lbl">Из программы</span>${esc(cue)}</div>`:''}
-    ${pn?`<div class="cue mine"><span class="lbl">Твоя заметка · ${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div>`:''}
+    const rows=(warm.length?`<div class="warm-h">Разминка</div>${warm.map(row).join('')}${work.length?'<div class="warm-h work">Рабочие</div>':''}`:'')+work.map(row).join('');
+    return `<div class="card"><h2 class="exh"><span class="exn">${esc(e.name)}${e.sets.some(s=>s.done&&!s.warm&&best>0&&e1(s)>best)?' <span title="Рекорд">🔥</span>':''}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
+    ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">Программа</span>${esc(cue)}</div></div>`:''}
+    ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
     <div class="set h"><span>Сет</span><span>Прошлый</span><span>Вес, кг</span><span>Повторы</span><span></span></div>${rows}
     <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ Подход</button><button onclick="addWarm('${e.id}')">+ Разминка</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="Убрать подход">−</button>`:''}</div>
-    <textarea class="exnote" rows="1" placeholder="Заметка: самочувствие, техника, что поменять в следующий раз" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea>
-    ${p&&best?`<div class="sm mut" style="margin-top:8px">Прошлый раз: ${fmtDay(p.d,{day:'numeric',month:'short'})} · лучший 1ПМ ≈ ${r1(best)} кг</div>`:''}</div>`}).join('');
-  return `<div class="grid">
-    <div class="card"><div class="lbl">Объём тренировки</div><div class="big">${fmt(vol)} <small>кг</small></div></div>
-    <div class="card"><div class="lbl">Рабочих подходов</div><div class="big">${nSets}</div></div>
-    <div class="card"><div class="lbl">Рекорды сегодня</div><div class="big ${prs?'down':''}">${prs}</div></div></div>
+    <textarea class="exnote" rows="1" placeholder="Заметка" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea>
+    ${best?`<div class="sm mut" style="margin-top:8px">Лучший 1ПМ: ${r1(best)} кг</div>`:''}</div>`}).join('');
+  return `<div class="grid g3">
+    <div class="card"><div class="lbl">Объём, кг</div><div class="big">${fmt(vol)}</div></div>
+    <div class="card"><div class="lbl">Подходов</div><div class="big">${nSets}</div></div>
+    <div class="card"><div class="lbl">Рекорды</div><div class="big ${prs?'down':''}">${prs}</div></div></div>
   ${weekGroupsCard()}
   ${progCard()}
   <div class="card hot"><h2>Добавить упражнение</h2>
     <div class="row"><input id="exName" list="exList" placeholder="Название упражнения" onkeydown="event.key==='Enter'&&addEx()" style="flex:3 1 200px"><button class="btn-a fit" onclick="addEx()">Добавить</button></div>
     <datalist id="exList">${allEx().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
     ${!w.length&&recent.some(d=>d<day)?`<button style="margin-top:10px" onclick="repeatLast()">↻ Повторить прошлую тренировку</button>`:''}
-    <p class="sm mut" style="margin-top:10px">Серые цифры — прошлый раз. Отметь ✓ — значения подставятся, запустится таймер отдыха. Разминку добавляй кнопкой «+ Разминка»: она не идёт в объём и в рабочие подходы.</p></div>
+    </div>
   ${cards}
-  <div class="card hot"><h2>Прогресс по упражнению</h2>
-    ${names.length?`<select onchange="S.ui.ex=this.value;commit()" style="margin-bottom:14px">${names.map(n=>`<option ${n===sel?'selected':''}>${esc(n)}</option>`).join('')}</select>
-    ${hist.length?`<div class="row" style="margin-bottom:8px"><div><div class="lbl">Расчётный 1ПМ</div><div class="big">${r1(hist.at(-1).e1)} <small>кг</small></div>${hist.length>1?`<div class="sm ${hist.at(-1).e1>=hist[0].e1?'up':'down'}">${hist.at(-1).e1>=hist[0].e1?'+':''}${r1(hist.at(-1).e1-hist[0].e1)} кг с ${fmtDay(hist[0].d,{day:'numeric',month:'short'})}</div>`:''}</div>
-    <div><div class="lbl">Объём последней</div><div class="big">${fmt(hist.at(-1).vol)} <small>кг</small></div></div></div>`:''}
-    ${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:r1(h.e1)})))}
-    <div class="lbl" style="margin-top:16px">Объём, кг</div>${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:h.vol})))}`
-    :'<p class="empty">Завершите хотя бы один подход — здесь появятся графики 1ПМ и объёма.</p>'}</div>
+
   ${lbCard()}
   ${recent.length?`<div class="card"><h2>Последние тренировки</h2><div class="list">${recent.map(d=>`<div class="item" onclick="goDay('${d}')" style="cursor:pointer"><div class="t">${fmtDay(d,{weekday:'short',day:'numeric',month:'long'})}<div class="sm mut">${S.workouts[d].map(e=>esc(e.name)).join(', ')}</div></div><span class="sm">${[dayVolume(d)&&fmt(dayVolume(d))+' кг',dayCardio(d)&&r1(dayCardio(d))+' мин'].filter(Boolean).join(' · ')||'—'}</span></div>`).join('')}</div></div>`:''}`;
 },
@@ -846,13 +845,13 @@ body(){
   const mx=Math.max(1,...ov.map(o=>Math.abs(o.pc)));
   return `<div class="card hot vitru"><div class="fig">${figure()}${tags}</div>
     <div class="row" style="margin-top:6px"><button class="btn-a" onclick="openMeas()">Записать замеры за ${fmtDay(day,{day:'numeric',month:'short'})}</button></div>
-    <p class="sm mut" style="margin-top:10px">Нажми на любой замер на фигуре, чтобы записать его. ${{cut:'Режим сушки (цель ниже текущего веса): зелёный — хорошо, серый — ожидаемо на дефиците, красный — тревожный знак, например объём мышц уходит быстрее талии.',bulk:'Режим набора (цель выше текущего веса): зелёный — рост, красный — уменьшение; талия, растущая на наборе, — серая.',maint:'Режим поддержания: зелёный — мышцы растут или талия уменьшается, красный — наоборот.'}[phase()]} Разница — от первого замера.</p></div>
+    <div class="legend" style="margin:12px 0 0"><span class="chip g">${{cut:'Сушка',bulk:'Набор',maint:'Поддержание'}[phase()]}</span><span><i class="dot y"></i>к цели</span>${phase()==='cut'?'<span><i class="dot n"></i>ожидаемо</span>':''}<span><i class="dot p"></i>против цели</span></div></div>
   ${cutCard()}
   <div class="card" id="mk"><h2>Замеры в динамике</h2>
     <div class="seg">${MEAS.map(x=>`<button class="${x.k===mk?'on':''}" onclick="pick('mk','${x.k}')">${x.n}</button>`).join('')}</div>
     ${mh.length?`<div class="big">${mh.at(-1).v} <small>см · ${m.n.toLowerCase()}</small></div>${mh.length>1?`<div class="sm ${JC[judge(mk)]}">${mh.at(-1).v-mh[0].v>0?'+':''}${r1(mh.at(-1).v-mh[0].v)} см с ${fmtDay(mh[0].d,{day:'numeric',month:'short'})}</div>`:''}`:''}
     ${line(mh.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:h.v})))}</div>
-  <div class="card"><h2>Прогресс всех замеров</h2>${ov.length?`<div class="ov">${ov.map(o=>`<span>${o.m.n}</span><span class="tr"><i class="${o.j}" style="${o.pc>=0?'left:50%':'right:50%'};width:${Math.abs(o.pc)/mx*50}%;transform-origin:${o.pc>=0?'left':'right'}"></i></span><span class="${JC[o.j]}">${o.b-o.a>0?'+':''}${r1(o.b-o.a)} см · ${o.pc>0?'+':''}${r1(o.pc)}%</span>`).join('')}</div>`:'<p class="empty">Нужно хотя бы два замера одной части тела.</p>'}</div>
+  <div class="card"><h2>Прогресс всех замеров</h2>${ov.length?`<div class="ov">${ov.map(o=>`<span>${o.m.n}</span><span class="tr"><i class="${o.j}" style="${o.pc>=0?'left:50%':'right:50%'};width:${Math.abs(o.pc)/mx*50}%;transform-origin:${o.pc>=0?'left':'right'}"></i></span><span class="${JC[o.j]}">${o.b-o.a>0?'+':''}${r1(o.b-o.a)} см · ${o.pc>0?'+':''}${r1(o.pc)}%</span>`).join('')}</div>`:'<p class="empty">Нужно 2 замера.</p>'}</div>
 ${weightCard()}
   <div class="card hot" id="ex"><h2>Силовые показатели</h2>
     ${names.length?`<div class="seg">${names.map(n=>`<button class="${n===ex?'on':''}" onclick="pick('ex',this.textContent)">${esc(n)}</button>`).join('')}</div>
@@ -860,21 +859,21 @@ ${weightCard()}
     <div><div class="lbl">Рекорд</div><div class="big">${r1(Math.max(...hist.map(h=>h.e1)))} <small>кг</small></div></div></div>
     ${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:r1(h.e1)})))}
     <div class="lbl" style="margin-top:16px">Объём, кг</div>${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:h.vol})))}`
-    :'<p class="empty">Отметь подходы во вкладке «Зал» — здесь появятся графики силы по каждому упражнению.</p>'}</div>`;
+    :'<p class="empty">Отметь подходы в «Зале».</p>'}</div>`;
 },
 food(){
   const st=S.settings,t=totals(day),f=fd(day),bal=t.kcal-num(st.maint),wtr=S.water[day]||0;
   const mb=(n,v,tg,c)=>`<div><div class="row sm" style="flex-wrap:nowrap"><span>${n}</span><span style="text-align:right"><b style="color:${c}">${fmt(v)}</b> <span class="mut">/ ${fmt(tg)} г</span></span></div><div class="bar"><i style="width:${tg?v/tg*100:0}%;background:${c}"></i></div></div>`;
   return `<div class="card hot"><div class="nutri">${ring(t.kcal,num(st.kcal))}
     <div class="macros">${mb('Белки',t.p,st.p,'var(--acc2)')}${mb('Жиры',t.f,st.f,'var(--fat)')}${mb('Углеводы',t.c,st.c,'var(--carb)')}
-    <div class="sm">${t.kcal?`Баланс к поддержке: <b class="${bal>=0?'up':'down'}">${bal>=0?'+':''}${fmt(bal)} ккал</b> (${bal>=0?'профицит':'дефицит'})`:'<span class="mut">Поддержку (TDEE) и цели задайте в ⚙︎</span>'}</div></div></div></div>
+    <div class="sm">${t.kcal?`${bal>=0?'Профицит':'Дефицит'} <b class="${bal>=0?'up':'down'}">${bal>=0?'+':''}${fmt(bal)} ккал</b>`:'<span class="mut">Поддержку (TDEE) и цели задайте в ⚙︎</span>'}</div></div></div></div>
   <div class="card"><h2>Вода<span class="sp"></span><span class="sm mut">${fmt(wtr)} / ${fmt(st.water)} мл</span></h2><div class="bar" style="margin-bottom:12px"><i style="width:${wtr/num(st.water)*100}%;background:var(--carb)"></i></div>
     <div class="row"><button onclick="addWater(250)">+250</button><button onclick="addWater(500)">+500</button><button onclick="addWater(-250)">−250</button></div></div>
   <div class="card"><h2>Продукты</h2>${f.quick?'<p class="sm down" style="margin-bottom:10px">Используется «итог дня» — список ниже не учитывается.</p>':''}
     <div class="fgrid"><input id="f_name" list="foodList" placeholder="Продукт" onchange="fillFood(this.value)"><input id="f_g" inputmode="decimal" placeholder="г"><input id="f_k" inputmode="decimal" placeholder="ккал/100"><input id="f_p" inputmode="decimal" placeholder="Б/100"><input id="f_f" inputmode="decimal" placeholder="Ж/100"><input id="f_c" inputmode="decimal" placeholder="У/100"></div>
     <datalist id="foodList">${Object.values(S.foods).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
     <button class="btn-a" style="margin:10px 0 12px" onclick="addFood()">Добавить</button>
-    ${f.items.length?`<div class="list">${f.items.map(i=>`<div class="item"><div class="t">${esc(i.name)} <span class="sm mut">${fmt(i.g)} г</span><div class="sm mut">Б ${r1(i.p)} · Ж ${r1(i.f)} · У ${r1(i.c)}</div></div><span>${fmt(i.kcal)} ккал</span><button class="x" onclick="delFood('${i.id}')">×</button></div>`).join('')}</div>`:'<p class="empty">Продукты запоминаются — в следующий раз хватит названия и граммов.</p>'}</div>
+    ${f.items.length?`<div class="list">${f.items.map(i=>`<div class="item"><div class="t">${esc(i.name)} <span class="sm mut">${fmt(i.g)} г</span><div class="sm mut">Б ${r1(i.p)} · Ж ${r1(i.f)} · У ${r1(i.c)}</div></div><span>${fmt(i.kcal)} ккал</span><button class="x" onclick="delFood('${i.id}')">×</button></div>`).join('')}</div>`:'<p class="empty">Пока пусто.</p>'}</div>
   <div class="card"><details ${f.quick?'open':''}><summary>Итог дня из FatSecret / MyFitnessPal</summary>
     <div class="row"><input id="q_k" inputmode="decimal" placeholder="Ккал" value="${f.quick?.kcal??''}"><input id="q_p" inputmode="decimal" placeholder="Б" value="${f.quick?.p??''}"><input id="q_f" inputmode="decimal" placeholder="Ж" value="${f.quick?.f??''}"><input id="q_c" inputmode="decimal" placeholder="У" value="${f.quick?.c??''}"></div>
     <div class="row" style="margin-top:10px"><button class="btn-a" onclick="setQuick()">Сохранить итог</button>${f.quick?`<button onclick="setQuick(true)">Убрать итог</button>`:''}</div></details></div>
@@ -886,7 +885,7 @@ function weightCard(){
   return `  <div class="card hot"><h2>Вес тела<span class="sp"></span><span class="chip g">Цель: ${st.goalWeight} кг</span></h2>
     <div class="row" style="margin-bottom:14px"><input id="wIn" inputmode="decimal" placeholder="Вес за ${fmtDay(day,{day:'numeric',month:'short'})}, кг" value="${S.weight[day]??''}" onkeydown="event.key==='Enter'&&setWeight()"><button class="btn-a fit" onclick="setWeight()">Сохранить</button>${S.weight[day]?'<button class="fit" onclick="delWeight()">Удалить</button>':''}</div>
     ${w.length?`<div class="big">${w.at(-1)[1]} <small>кг</small></div>`:''}
-    ${ws?`<div class="sm" style="margin:4px 0 10px"><b class="${(ws.weekly>0)===ws.bulk?'up':'down'}">${ws.weekly>0?'+':''}${r1(ws.weekly)} кг/нед (${r1(ws.pw)}%)</b> — ${ws.zone}${ws.eta?` · до цели ≈ ${ws.eta} нед`:''}<div class="mut">Ориентир: ${ws.bulk?'набор 0.25–0.5% массы/нед':'сушка 0.5–1% массы/нед'}</div></div>`:''}
+    ${ws?`<div class="sm" style="margin:4px 0 10px"><b class="${(ws.weekly>0)===ws.bulk?'up':'down'}">${ws.weekly>0?'+':''}${r1(ws.weekly)} кг/нед (${r1(ws.pw)}%)</b> · ${ws.zone}${ws.eta?` · цель через ≈ ${ws.eta} нед`:''}</div>`:''}
     ${line(w.map(([d,v])=>({l:fmtDay(d,{day:'numeric',month:'short'})+` (${v} кг)`,v})),{goal:num(st.goalWeight),unit:' кг'})}</div>`;
 }
 
@@ -932,17 +931,16 @@ function cutCard(){
   if(phase()!=='cut')return '';
   const since=[bodyDays()[0],weights()[0]?.[0]].filter(Boolean).sort()[0]||addDays(today(),-28),ws=weightStats(),w=measPc('waist');
   const mus=MEAS.filter(m=>!FAT.includes(m.k)).map(m=>measPc(m.k)).filter(Boolean),mp=mus.length?sum(mus.map(x=>x.pc))/mus.length:null,st=liftTrend(since),rows=[];
-  if(ws){const v=ws.pw<-1?'b':ws.pw<=-0.5?'g':'n';rows.push([v,'Темп',`${r1(ws.weekly)} кг/нед (${r1(ws.pw)}%) — ${v==='b'?'быстрее 1% массы в неделю: выше риск потерять мышцы':v==='g'?'в рекомендованной зоне 0.5–1% массы в неделю':'медленнее 0.5% в неделю: можно чуть увеличить дефицит'}`])}
-  if(w&&mp!=null){const v=w.pc<0&&mp>w.pc?'g':w.pc<0?'b':'n';rows.push([v,'Талия и мышцы',`талия ${w.pc>0?'+':''}${r1(w.pc)}%, объёмы мышц в среднем ${mp>0?'+':''}${r1(mp)}% — ${v==='g'?'уходит в основном жир':v==='b'?'мышцы уменьшаются быстрее талии':'талия пока не уменьшается'}`])}
-  if(st){const v=st.pc>=-2?'g':st.pc<-5?'b':'n';rows.push([v,'Сила',`${st.pc>0?'+':''}${r1(st.pc)}% в среднем по ${st.n} упр. — ${v==='g'?'держится, мышцы на месте':v==='b'?'падает — тревожный знак':'немного просела, на дефиците это нормально'}`])}
-  if(!rows.length)return `<div class="card"><h2>Как идёт сушка</h2><p class="empty">Нужны хотя бы два замера веса или талии и пара тренировок — тогда здесь появится разбор: уходит жир или мышцы.</p></div>`;
+  if(ws){const v=ws.pw<-1?'b':ws.pw<=-0.5?'g':'n';rows.push([v,'Темп',`${r1(ws.weekly)} кг/нед · ${v==='b'?'быстро':v==='g'?'норма':'медленно'}`])}
+  if(w&&mp!=null){const v=w.pc<0&&mp>w.pc?'g':w.pc<0?'b':'n';rows.push([v,'Талия / мышцы',`${w.pc>0?'+':''}${r1(w.pc)}% / ${mp>0?'+':''}${r1(mp)}%`])}
+  if(st){const v=st.pc>=-2?'g':st.pc<-5?'b':'n';rows.push([v,'Сила',`${st.pc>0?'+':''}${r1(st.pc)}% · ${v==='g'?'держится':v==='b'?'падает':'чуть ниже'}`])}
+  if(!rows.length)return `<div class="card"><h2>Как идёт сушка</h2><p class="empty">Нужно 2 замера и пара тренировок.</p></div>`;
   const bad=rows.some(r=>r[0]==='b'),allGood=rows.every(r=>r[0]==='g');
   const [hv,ht]=bad?['b','Есть признаки потери мышц']:allGood?['g','Жир уходит, мышцы сохраняются']:['n','Пока всё в пределах нормы'];
   return `<div class="card hot" id="cut"><h2>Как идёт сушка</h2>
     <div class="verdict ${hv}">${{g:'✓',b:'!',n:'•'}[hv]} ${ht}</div>
-    <div class="list">${rows.map(([v,t,d])=>`<div class="item"><span class="vd ${v}"></span><div class="t"><b>${t}</b><div class="sm mut">${d}</div></div></div>`).join('')}</div>
-    ${bad?'<p class="sm" style="margin-top:12px">Что помогает сохранить мышцы на дефиците: белок 1.6–2.2 г/кг веса, худеть не быстрее 1% массы в неделю, не бросать тяжёлую базу, спать 7–9 часов.</p>':''}
-    <p class="sm mut" style="margin-top:10px">На сушке обхваты уменьшаются и от жира, это нормально. Мышцы выдаёт сила: держатся рабочие веса — мышцы на месте. Отсчёт с ${fmtDay(since,{day:'numeric',month:'long'})}.</p></div>`;
+    <div class="list">${rows.map(([v,t,d])=>`<div class="item"><span class="vd ${v}"></span><div class="t">${t}</div><span class="sm mut fit">${d}</span></div>`).join('')}</div>
+    ${bad?'<p class="sm mut" style="margin-top:12px">Белок 1.6–2.2 г/кг · до 1% веса в неделю · тяжёлая база · сон 7–9 ч</p>':''}</div>`;
 }
 const liftNames=()=>[...new Set(Object.values(S.workouts).flat().filter(e=>working(e.sets).length).map(e=>e.name))];
 function pick(key,v){S.ui[key]=v;save();render();const c=document.getElementById(key);if(!c)return;c.classList.remove('enter');void c.offsetWidth;c.classList.add('enter');setTimeout(()=>c.classList.remove('enter'),1300)}
@@ -1169,19 +1167,19 @@ function progCard(){
     <button style="width:100%;margin-bottom:12px" onclick="progAddDay()">+ День</button>
     ${rulesBlock(progDraft.rules)}
     <div class="row"><button class="btn-a" onclick="progSave()">Сохранить программу</button><button onclick="progDraft=null;render()">Отмена</button></div>
-    <p class="sm mut" style="margin-top:10px">Выбери день недели — и в этот день программа сама появится во вкладке «Зал». Или оставь «Без дня недели» и выбирай день программы вручную на нужную дату.</p></div>`;
+    </div>`;
   const P=S.program;
   if(!P?.days?.length)return `<div class="card" id="prog"><h2>📋 Моя программа</h2>
-    <p class="sm mut" style="margin-bottom:12px">Загрузи свою программу: Excel (.xlsx), PDF, Word (.docx), TXT или просто вставь текст. Приложение возьмёт упражнения по дням и комментарии к ним, подходы ты отмечаешь сам.</p>
+    <p class="sm mut" style="margin-bottom:12px">Excel, PDF, Word или текст.</p>
     <div class="row"><button class="btn-a" onclick="progFile.click()">Загрузить файл</button><button onclick="progPaste()">Вставить текст</button></div></div>`;
   const d=progFor(day),list=d?exs(d):[],have=new Set(wk(day).map(e=>low(e.name))),miss=list.filter(e=>!have.has(low(e.n))),sel=d?d.id:'none';
   return `<div class="card hot" id="prog"><h2>📋 ${esc(P.name)}<span class="sp"></span><button class="ico" onclick="progEdit()">Изменить</button></h2>
-    <div class="row" style="margin-bottom:12px"><span class="sm mut fit">${fmtDay(day,{weekday:'long',day:'numeric',month:'short'})}</span>
+    <div class="row" style="margin-bottom:12px">
       <select onchange="progAttach(this.value)" aria-label="День программы на эту дату"><option value="none" ${sel==='none'?'selected':''}>Без программы</option>${P.days.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${esc(x.name)}${x.wd!=null?' · '+WDN.find(w=>w[0]===x.wd)[1]:''}</option>`).join('')}</select></div>
     ${d?`<div class="list">${list.map(e=>{const added=have.has(low(e.n));
-        return `<div class="item ${added?'done':''}" ${added?'':`onclick='progAdd([${esc(JSON.stringify(e.n))}])' style="cursor:pointer"`}><div class="t">${esc(e.n)}${e.c?`<div class="sm mut ex-c">${esc(e.c)}</div>`:''}</div><span class="sm ${added?'up':'mut'} fit">${added?'добавлено':'+ добавить'}</span></div>`}).join('')}</div>
-      ${miss.length?`<button class="btn-a" style="width:100%;margin-top:12px" onclick="progAdd(exs(progFor(day)).map(e=>e.n))">Начать тренировку: ${miss.length} упр.</button>`:'<p class="sm up" style="margin-top:10px">Все упражнения дня ниже ↓ Отмечай подходы.</p>'}`
-      :'<p class="empty">На эту дату день программы не выбран. Выбери его выше или прикрепи дни программы к дням недели через «Изменить».</p>'}
+        return `<div class="item ${added?'done':''}" ${added?'':`onclick='progAdd([${esc(JSON.stringify(e.n))}])' style="cursor:pointer"`}><div class="t">${esc(e.n)}</div><span class="sm ${added?'up':'mut'} fit">${added?'✓':'+'}</span></div>`}).join('')}</div>
+      ${miss.length?`<button class="btn-a" style="width:100%;margin-top:12px" onclick="progAdd(exs(progFor(day)).map(e=>e.n))">Начать тренировку: ${miss.length} упр.</button>`:'<p class="sm up" style="margin-top:10px">✓ Всё добавлено</p>'}`
+      :'<p class="empty">Сегодня без программы.</p>'}
     ${rulesBlock(P.rules)}</div>`;
 }
 
@@ -1224,13 +1222,13 @@ function cardioCard(e,p,cue,pn){
       <input inputmode="decimal" value="${esc(s.t)}" placeholder="${esc(ps?.t||'мин')}" oninput="setVal('${e.id}',${i},'t',this.value)" aria-label="Минуты">
       <input inputmode="decimal" value="${esc(s.km)}" placeholder="${esc(ps?.km||'км')}" oninput="setVal('${e.id}',${i},'km',this.value)" aria-label="Километры">
       <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Отрезок выполнен"></button></div>`}).join('');
-  return `<div class="card"><h2>${esc(e.name)}<span class="sp"></span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
-    ${cue?`<div class="cue"><span class="lbl">Из программы</span>${esc(cue)}</div>`:''}
-    ${pn?`<div class="cue mine"><span class="lbl">Твоя заметка · ${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div>`:''}
+  return `<div class="card"><h2 class="exh"><span class="exn">${esc(e.name)}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
+    ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">Программа</span>${esc(cue)}</div></div>`:''}
+    ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
     <div class="set h"><span>№</span><span>Прошлый</span><span>Минуты</span><span>Км</span><span></span></div>${rows}
     <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ Отрезок</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="Убрать отрезок">−</button>`:''}</div>
     ${T?`<div class="sm" style="margin-top:10px">Итого: <b>${r1(T)} мин</b>${K?` · <b>${r1(K)} км</b> · темп ${fmtPace(T/K)} мин/км · ${r1(K/T*60)} км/ч`:''}</div>`:''}
-    <textarea class="exnote" rows="1" placeholder="Заметка: пульс, уклон, уровень, самочувствие" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea></div>`;
+    <textarea class="exnote" rows="1" placeholder="Заметка: пульс, уклон" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea></div>`;
 }
 function weekGroupsCard(){
   const wd=weekDays(day),cnt={};
@@ -1238,12 +1236,12 @@ function weekGroupsCard(){
   const planned=new Set((S.program?.days||[]).flatMap(d=>exs(d).map(e=>groupOf(e.n))));
   const gs=groupList().filter(g=>cnt[g]||(g!=='Другое'&&(planned.has(g)||S.program?.targets?.[g])));
   if(!gs.length)return '';
-  return `<div class="card" id="wg"><h2>Рабочие подходы за неделю<span class="sp"></span><span class="sm mut">${fmtDay(wd[0],{day:'numeric',month:'short'})} – ${fmtDay(wd[6],{day:'numeric',month:'short'})}</span></h2>
+  return `<div class="card" id="wg"><h2>Подходы за неделю<span class="sp"></span><span class="sm mut">${fmtDay(wd[0],{day:'numeric',month:'short'})} – ${fmtDay(wd[6],{day:'numeric',month:'short'})}</span></h2>
     <div class="wg">${gs.map(g=>{const n=cnt[g]||0;
       if(g==='Другое')return `<span class="gn">${g}</span><span class="tr"></span><span class="gv"><b>${n}</b></span>`;
       const [lo,hi]=targetOf(g),mx=Math.max(hi*1.25,n),st=n<lo?'lo':n>hi?'hi':'ok';
       return `<span class="gn">${g}</span><span class="tr"><span class="zone" style="left:${lo/mx*100}%;width:${(hi-lo)/mx*100}%"></span><i class="${st}" style="width:${n/mx*100}%"></i></span><span class="gv ${st}"><b>${r1(n)}</b> / ${lo}–${hi}${g==='Кардио'?' мин':''}</span>`}).join('')}</div>
-    <p class="sm mut" style="margin-top:12px">Рабочих подходов всего: ${sum(Object.entries(cnt).filter(([g])=>g!=='Кардио').map(([,v])=>v))}, разминка не считается.${gs.includes('Кардио')?' Кардио считается в минутах: ориентир ВОЗ — 150–300 минут умеренной нагрузки в неделю.':''} Зелёная зона — ориентир ${S.program?.targets?'из твоей программы':'10–20 подходов на группу в неделю'}: оранжевый — недобор, красный — перебор. Группу упражнения можно поменять в его карточке.</p></div>`;
+    <p class="sm mut" style="margin-top:12px">Всего ${sum(Object.entries(cnt).filter(([g])=>g!=='Кардио').map(([,v])=>v))} · зелёная зона — норма</p></div>`;
 }
 
 // ---------- research popup ----------
