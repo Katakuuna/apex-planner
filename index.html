@@ -239,6 +239,59 @@ select.gsel{width:auto;flex:0 0 auto;padding:3px 8px;font-size:12px;font-weight:
 .dot.n{background:var(--rose)}
 .vd{width:10px;height:10px;border-radius:50%;flex:0 0 auto;background:var(--rose)}.vd.g{background:var(--ok)}.vd.b{background:var(--acc2)}
 .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 12px;margin-bottom:6px}
+/* design pass: same palette; calmer hierarchy, steadier rhythm, rows that don't wrap on a phone */
+:root{--r:22px;--r-sm:14px}
+header{position:sticky;top:0;z-index:9;max-width:none;margin:calc(-16px - env(safe-area-inset-top)) -16px 14px;padding:calc(10px + env(safe-area-inset-top)) max(16px,calc(50% - 414px)) 8px;
+  background:linear-gradient(#0d0d0ee6,#0d0d0ebf);backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);box-shadow:0 .5px 0 var(--hair-soft)}
+h1{font-size:28px;letter-spacing:-.025em;line-height:1.1}
+.datebar{margin-top:6px}.datebar #date{font-size:15px}
+.datebar .ico,.top .ico{width:36px;height:36px;padding:0;display:grid;place-items:center}.datebar #todayBtn{width:auto;padding:0 12px;font-size:13px}
+.card{box-shadow:inset 0 0 0 1px var(--hair-soft),inset 0 1px 0 #ffffff0a;padding:18px 18px 20px}
+.card.hot{box-shadow:inset 0 0 0 1px var(--hair),inset 0 1px 0 #ffffff12,0 12px 40px #9b1b301f}
+h2{font-size:17px;letter-spacing:-.01em;margin-bottom:14px;min-height:28px}
+h2>button:not(.x){padding:5px 12px;font-size:13px;color:var(--rose);border-radius:999px}
+.lbl{font-size:11px;letter-spacing:.07em;margin-bottom:8px}
+.grid{gap:10px;margin-bottom:12px}
+.grid>.card{display:flex;flex-direction:column;padding:14px 16px}
+.grid>.card .sm{margin-top:auto;padding-top:6px}
+.grid .big{font-size:clamp(24px,7.4vw,32px)}.big small{white-space:nowrap}
+.grid.g3 .big{font-size:24px}
+.bar{height:6px;border-radius:999px;margin-top:10px}.bar i{border-radius:999px}
+button,input,select{min-height:40px}.chk,.x,.set .n,.set input,.seg button,.chips .x,.mtag,select.gsel,.lbmore,.calg button,.week button.d,nav button,#rest button,h2>button{min-height:0}
+.row>button:not(.fit){flex:1 1 72px}.row>input,.row>select{flex-basis:96px}
+.item{border-radius:var(--r-sm);padding:12px 14px;min-height:52px}
+.item .t{line-height:1.35}.item .chip{margin-left:2px}
+.chip{font-size:11.5px;font-weight:500;padding:2px 8px}
+.x,.x:hover{width:28px;height:28px;padding:0;display:grid;place-items:center;border-radius:50%;flex:0 0 auto}.x:hover{background:var(--glass)}
+.set{grid-template-columns:30px 1.2fr 1fr 1fr 32px;gap:6px;padding:5px 6px}
+.set .prev{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.set .n{width:30px;height:30px;padding:0;border-radius:50%;font-size:12px;font-variant-numeric:tabular-nums}
+.set input{font-variant-numeric:tabular-nums;font-weight:600}
+.sug{background:linear-gradient(90deg,#9b1b302e,#ffffff05);box-shadow:inset 0 0 0 .5px var(--hair-soft)}
+.cue{border-radius:12px}
+.empty{padding:10px 0;text-align:center}
+/* weekly bars: html, so labels keep their size at any width */
+.bars{display:grid;grid-template-columns:repeat(var(--n,7),1fr);gap:8px;height:150px;align-items:end}
+.bc{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;min-width:0}
+.bc .bt{flex:1;width:100%;max-width:34px;display:flex;align-items:flex-end;border-radius:9px;background:#e0364f12}
+.bc .br{display:block;width:100%;border-radius:9px;background:linear-gradient(var(--acc),#7a1526);transform-origin:50% 100%}
+.bc.on .br{background:linear-gradient(var(--acc2),var(--acc));box-shadow:0 4px 18px #e0364f40}
+.bc .bv{font-size:11px;font-weight:600;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap;min-height:14px;line-height:14px}
+.bc .bl{font-size:11px;color:var(--mut);text-transform:capitalize}.bc.on .bl{color:var(--txt);font-weight:600}
+.axis{font-size:11px;margin-top:8px}
+.nutri{gap:20px}
+nav{bottom:calc(12px + env(safe-area-inset-bottom))}
+#sciBtn{width:40px;height:40px;font-size:18px;min-height:0}
+dialog{border-radius:26px;padding:22px}
+dialog h2{margin-bottom:16px}
+@media(max-width:520px){
+  body{padding-left:14px;padding-right:14px}
+  header{margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
+  .card{padding:16px 16px 18px}
+  .grid:not(.g3){grid-template-columns:repeat(2,1fr)}
+  .bars{gap:6px}
+  .fgrid{grid-template-columns:repeat(12,1fr)}.fgrid>*{grid-column:span 3}.fgrid>:first-child{grid-column:span 8}.fgrid>:nth-child(2){grid-column:span 4}.fgrid input{padding:9px 8px;font-size:14px}
+}
 </style>
 </head>
 <body>
@@ -314,7 +367,6 @@ select.gsel{width:auto;flex:0 0 auto;padding:3px 8px;font-size:12px;font-weight:
   <div class="row" style="margin-top:8px"><button onclick="resetAll()" style="color:var(--acc2)">Стереть всё</button></div>
 </dialog>
 
-<script src="studies.js"></script>
 <script src="foods.js"></script>
 <script>
 // ---------- utils ----------
@@ -342,9 +394,14 @@ const DEF={settings:{kcal:2700,p:180,f:70,c:250,maint:2500,water:3000,goalWeight
 function norm(d){const s={...structuredClone(DEF),...d};s.settings={...DEF.settings,...d.settings};s.ui||={};return s}
 function load(){let d={};try{d=JSON.parse(localStorage.getItem(KEY))||{}}catch{}return norm(d)}
 let S=load(),tab=S.ui.tab||'home',day=today();
-function localSave(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){if(!cloud)toast('Не удалось сохранить на устройстве: '+e.message+'. Сделайте экспорт в настройках.')}}
-function save(){localSave();if(cloud){clearTimeout(syncT);syncT=setTimeout(pushCloud,800)}}
+let saveT=0;
+function localSave(){clearTimeout(saveT);saveT=0;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){if(!cloud)toast('Не удалось сохранить на устройстве: '+e.message+'. Сделайте экспорт в настройках.')}}
+// rapid edits (each keystroke, each set tick) coalesce into one write; flushed when the page is hidden or closed
+function save(){clearTimeout(saveT);saveT=setTimeout(localSave,400);if(cloud){clearTimeout(syncT);syncT=setTimeout(pushCloud,800)}}
 function commit(){save();render()}
+const flushSave=()=>{if(saveT)localSave()};
+addEventListener('pagehide',flushSave);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)flushSave()});
 try{navigator.storage?.persist?.()}catch{}
 
 // in-page confirm & toast (alert/confirm are blocked inside claude.ai)
@@ -362,6 +419,7 @@ function shards(s){
 }
 function applyShard(id,v){
   const [k,m]=id.split('~');if(!(k in DEF)||k==='ui')return;
+  if(k==='workouts')HX=null;
   if(!m){S[k]=k==='settings'?{...DEF.settings,...v}:v;return}
   for(const d of Object.keys(S[k]))if(d.startsWith(m))delete S[k][d];
   Object.assign(S[k],v||{});
@@ -434,6 +492,7 @@ function sbInit(){
 }
 function mergeShard(id,v){ // first login on a device: keep local entries, cloud wins on the same date/id
   const [k,m]=id.split('~');if(!(k in DEF)||k==='ui')return;
+  if(k==='workouts')HX=null;
   if(m||k==='foods'){S[k]={...S[k],...v};return}
   if(k==='settings'){S.settings={...S.settings,...v};return}
   if(Array.isArray(v)){const ids=new Set(v.map(x=>x.id));S[k]=[...v,...(S[k]||[]).filter(x=>!ids.has(x.id))];return}
@@ -601,10 +660,12 @@ function render(){
   const isToday=day===today();
   $('#date').textContent=isToday?'Сегодня, '+new Date(day+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):fmtDay(day,{weekday:'short',day:'numeric',month:'long'});
   $('#todayBtn').hidden=isToday;
+  HX=null;
   $('main').innerHTML=V[tab]();
   if(tab==='gym')sciAuto();
-  if(pressPath){let el=$('main');for(const i of pressPath)el=el?.children[i];el?.classList.add('pop');pressPath=null}
+  applyPress();
 }
+function applyPress(){if(pressPath){let el=$('main');for(const i of pressPath)el=el?.children[i];el?.classList.add('pop');pressPath=null}}
 
 // ---------- charts ----------
 // ponytail: points spaced by index, not by date; switch to time-scaled x if gaps matter
@@ -617,26 +678,23 @@ function line(pts,{goal,unit=''}={}){
   const d=pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
   const g='g'+uid(),L=pts.length-1;
   return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E0364F" stop-opacity=".35"/><stop offset="1" stop-color="#E0364F" stop-opacity="0"/></linearGradient></defs>
-  ${goal?`<line x1="${P}" x2="${W-P}" y1="${y(goal)}" y2="${y(goal)}" stroke="#8e8e93" stroke-dasharray="4 6"/><text x="${W-P}" y="${y(goal)-6}" text-anchor="end" fill="#8e8e93" font-size="13">цель ${goal}${unit}</text>`:''}
+  ${goal?`<line x1="${P}" x2="${W-P}" y1="${y(goal)}" y2="${y(goal)}" stroke="#9b8f92" stroke-opacity=".6" stroke-dasharray="4 6"/><text x="${W-P}" y="${y(goal)-8}" text-anchor="end" fill="#9b8f92" font-size="20">цель ${goal}${unit}</text>`:''}
   <path class="area" d="${d}L${x(L)},${H}L${x(0)},${H}Z" fill="url(#${g})"/>
   <path class="ln" pathLength="1" d="${d}" fill="none" stroke="#E0364F" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
   <circle cx="${x(L)}" cy="${y(pts[L].v)}" r="6" fill="#E0364F"/></svg>
   <div class="axis"><span>${esc(pts[0].l)}</span><span>${esc(pts[L].l)}</span></div>`;
 }
 function bars(items){
-  const W=600,H=150,n=items.length,bw=W/n,mx=Math.max(1,...items.map(i=>i.v));
-  return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img">${items.map((it,i)=>{
-    const h=(H-44)*it.v/mx,x=i*bw+bw*.2,w=bw*.6;
-    return `<rect class="br" style="animation-delay:${i*45}ms" x="${x}" y="${H-22-h}" width="${w}" height="${Math.max(h,2)}" rx="6" fill="${it.on?'#E0364F':'#9B1B30'}" opacity="${it.v?1:.35}"/>
-    ${it.v?`<text x="${x+w/2}" y="${H-28-h}" text-anchor="middle" fill="#f5f5f7" font-size="13">${fmt(it.v)}</text>`:''}
-    <text x="${x+w/2}" y="${H-4}" text-anchor="middle" fill="${it.on?'#f5f5f7':'#8e8e93'}" font-size="13">${esc(it.l)}</text>`}).join('')}</svg>`;
+  const mx=Math.max(1,...items.map(i=>i.v));
+  return `<div class="bars" role="img">${items.map((it,i)=>`<div class="bc ${it.on?'on':''} ${it.v?'':'z'}">
+    <span class="bv">${it.v?fmt(it.v):''}</span><div class="bt"><i class="br" style="height:${Math.max(it.v/mx*100,it.v?4:0)}%;animation-delay:${i*45}ms"></i></div><span class="bl">${esc(it.l)}</span></div>`).join('')}</div>`;
 }
 function ring(v,max){
   const C=2*Math.PI*52,p=Math.min(v/max||0,1);
-  return `<svg viewBox="0 0 120 120" class="ring"><circle cx="60" cy="60" r="52" stroke="#2a2a2e" stroke-width="11" fill="none"/>
+  return `<svg viewBox="0 0 120 120" class="ring"><circle cx="60" cy="60" r="52" stroke="#e0364f1f" stroke-width="11" fill="none"/>
   ${p>0?'':'<!--'}<circle class="arc" cx="60" cy="60" r="52" stroke="${v>max*1.05?'#ff9f0a':'#9B1B30'}" stroke-width="11" fill="none" stroke-dasharray="${C*p} ${C}" stroke-linecap="round" transform="rotate(-90 60 60)"/>${p>0?'':'-->'}
   <text x="60" y="62" text-anchor="middle" fill="#f5f5f7" font-size="22" font-weight="700">${fmt(v)}</text>
-  <text x="60" y="80" text-anchor="middle" fill="#8e8e93" font-size="10">из ${fmt(max)} ккал</text></svg>`;
+  <text x="60" y="80" text-anchor="middle" fill="#9b8f92" font-size="9.5">из ${fmt(max)} ккал</text></svg>`;
 }
 
 // ---------- tasks & goals ----------
@@ -704,19 +762,30 @@ const isWork=s=>s.done&&!s.warm; // counts toward weekly working sets (bodyweigh
 function prevSet(e,i,p){const s=e.sets[i],k=e.sets.slice(0,i).filter(x=>!!x.warm===!!s.warm).length;return p?.sets.filter(x=>!!x.warm===!!s.warm)[k]}
 const dayVolume=d=>sum((S.workouts[d]||[]).flatMap(e=>working(e.sets)).map(s=>num(s.w)*num(s.r)));
 const allEx=()=>[...new Set([...Object.values(S.workouts).flat().map(e=>e.name),...DEFAULT_EX])];
-function prevEx(name,d){
-  const k=low(name);
-  for(const dd of Object.keys(S.workouts).filter(x=>x<d).sort().reverse()){const e=S.workouts[dd].find(x=>low(x.name)===k&&x.sets.length);if(e)return {d:dd,sets:e.sets}}
-  return null;
+// per-exercise history index: low(name) -> [{d,e}] by date, then by order within the day.
+// Holds the exercise objects themselves, so set edits show up without a rebuild; any full render() or synced
+// workouts shard drops it and the next lookup rebuilds it.
+let HX=null,HXw=null;
+function hx(name){
+  if(!HX||HXw!==S.workouts){HX=new Map();HXw=S.workouts;
+    for(const d of Object.keys(S.workouts).sort())for(const e of S.workouts[d]){const k=low(e.name);HX.has(k)?HX.get(k).push({d,e}):HX.set(k,[{d,e}])}}
+  return HX.get(low(name))||[];
 }
-function bestBefore(name,d){const k=low(name);let b=0;for(const [dd,a] of Object.entries(S.workouts))if(dd<d)for(const e of a)if(low(e.name)===k)for(const s of working(e.sets))b=Math.max(b,e1(s));return b}
+// latest date before d with an entry passing f; within that date the first match wins
+function hxLast(name,d,f){
+  const a=hx(name);let r=null;
+  for(let i=a.length-1;i>=0;i--){const x=a[i];if(x.d>=d)continue;if(r&&x.d!==r.d)break;if(f(x.e))r=x}
+  return r;
+}
+function prevEx(name,d){const x=hxLast(name,d,e=>e.sets.length);return x&&{d:x.d,sets:x.e.sets}}
+function bestBefore(name,d){let b=0;for(const x of hx(name)){if(x.d>=d)break;for(const s of working(x.e.sets))b=Math.max(b,e1(s))}return b}
 // next-session target (double progression): add reps up to the top of the range, then add weight and drop to the bottom.
-// Range: a "6-8" in the program comment, else the settings range, else 6–8.
+// Range: "N×6-8" / "6-8" in the program comment, else the settings range, else 6–8.
 // On a cut it holds weight × reps and only adds weight once the top of the range is hit; off a cut it never drops below ~90% of the best e1RM.
-function nextTarget(name,d){
+function histTarget(name,d){
   const p=prevEx(name,d);if(!p)return null;
   const rg=t=>{const m=String(t||'').match(/(\d{1,2})\s*[-–—]\s*(\d{1,2})/);return m&&+m[1]<+m[2]&&+m[2]<=30&&[+m[1],+m[2]]};
-  const [lo,hi]=rg(progNote(name))||rg(S.settings.reps)||[6,8],cut=phase()==='cut';
+  const sp=progSpec(progNote(name)),[lo,hi]=sp?.lo?[sp.lo,sp.hi]:rg(progNote(name))||rg(S.settings.reps)||[6,8],cut=phase()==='cut';
   const ws=working(p.sets);
   if(!ws.length){const bw=p.sets.filter(s=>s.done&&!s.warm&&!num(s.w)&&num(s.r));if(!bw.length)return null;
     const r=Math.max(...bw.map(s=>num(s.r)));return cut?{w:0,r,why:`прошлый раз ${r} повт. · сушка: удержать`}:{w:0,r:r+1,why:`прошлый раз ${r} повт. · +1 повтор`}}
@@ -724,7 +793,7 @@ function nextTarget(name,d){
   const best=bestBefore(name,d),last=`${r1(w)} × ${r}`;
   let t;
   if(r>=hi)t={w:w+step,r:lo,why:`${last} во всех подходах · +${step} кг`};
-  else if(r<lo&&cut)t={w:Math.max(step,Math.floor(e1({w,r})/(1+lo/30)/step)*step),r:lo,why:`${last} · сушка: чуть меньше вес, но в ${lo}–${hi}`};
+  else if(r<lo&&cut)t={w:Math.max(step,Math.floor(e1({w,r})/(1+lo/30)/step)*step),r:lo,why:`${last} · сушка: чуть меньше вес, но в ${lo}${hi>lo?"–"+hi:""} повт.`};
   else if(r<lo)t={w,r:lo,why:`${last} · добери до ${lo} повт.`};
   else if(cut)t={w,r,why:`${last} · сушка: удержать`};
   else t={w,r:r+1,why:`${last} · +1 повтор до ${hi}`};
@@ -732,9 +801,31 @@ function nextTarget(name,d){
   if(fl>t.w){t.w=fl;t.why=`${last} · ниже формы, 90% лучшего 1ПМ (${r1(best)} кг)`}
   t.w=r1(t.w);return t;
 }
-// fill empty, not-yet-done working sets with the target
+// program comment → {sets, lo, hi, pct, rir}: "4×6", "3x6-8", "75%", "RPE 8", "RIR 2" / "2 в запасе"
+function progSpec(c){
+  c=String(c||'');const f=x=>x&&+x.replace(',','.');
+  const sr=c.match(/(\d{1,2})\s*[xх×*]\s*(\d{1,2})(?:\s*[-–—]\s*(\d{1,2}))?/i),pc=f(c.match(/(\d{2,3}(?:[.,]\d)?)\s*%/)?.[1]);
+  const rpe=f(c.match(/RPE\s*(\d{1,2}(?:[.,]5)?)/i)?.[1]),rir=f(c.match(/(?:RIR|ПВЗ)\s*(\d)|(\d)\s*(?:повт\w*\s*)?в\s*запасе/i)?.slice(1).find(Boolean));
+  const o={sets:sr?+sr[1]:0,lo:sr?+sr[2]:0,hi:sr?+(sr[3]||sr[2]):0,pct:pc>=30&&pc<=100?pc:0,rir:rir??(rpe>=5&&rpe<=10?10-rpe:null)};
+  return o.sets||o.pct||o.rir!=null?o:null;
+}
+// recent strength level: best e1RM over the last 6 weeks (on a cut the all-time best is stale), else all-time best
+function e1Base(name,d){const from=addDays(d,-42);let b=0;
+  for(const x of hx(name)){if(x.d>=d)break;if(x.d>=from)for(const s of working(x.e.sets))b=Math.max(b,e1(s))}
+  return b||bestBefore(name,d)}
+// target from the program's %1RM or RPE/RIR and the Epley formula; falls back to history (histTarget). Sets count comes from "N×reps".
+function nextTarget(name,d){
+  const sp=progSpec(progNote(name)),h=histTarget(name,d),base=sp&&(sp.pct||sp.rir!=null)?e1Base(name,d):0;
+  if(!base)return h&&{...h,sets:sp?.sets||0};
+  const r=sp.lo||(sp.pct?Math.max(1,Math.round(30*(100/sp.pct-1))-2):num(rg0(S.settings.reps))||6),rir=sp.rir??2;
+  const raw=sp.pct?base*sp.pct/100:base/(1+(r+rir)/30),step=raw<20?1:2.5,w=r1(Math.floor(raw/step)*step);
+  return {w,r,sets:sp.sets,why:sp.pct?`${sp.pct}% от 1ПМ ${r1(base)} кг`:`${r} повт. + ${rir} в запасе от 1ПМ ${r1(base)} кг`};
+}
+const rg0=t=>String(t||'').match(/\d{1,2}/)?.[0];
+// fill empty, not-yet-done working sets with the target; add working sets up to the program's count
 function useTarget(id){const e=exOf(id),t=nextTarget(e.name,day);if(!t)return;
-  for(const s of e.sets)if(!s.warm&&!s.done){if(s.w===''&&t.w)s.w=String(t.w);if(s.r==='')s.r=String(t.r)}commit()}
+  for(let n=e.sets.filter(s=>!s.warm).length;n<t.sets;n++)e.sets.push({w:'',r:'',done:false,warm:false});
+  for(const s of e.sets)if(!s.warm&&!s.done){if(s.w===''&&t.w)s.w=String(t.w);if(s.r==='')s.r=String(t.r)}commitEx(id)}
 function exHistory(name){
   const k=low(name);
   return Object.keys(S.workouts).sort().map(d=>{const sets=S.workouts[d].filter(e=>low(e.name)===k).flatMap(e=>working(e.sets));
@@ -750,31 +841,58 @@ function repeatLast(){
   wk(day).push(...S.workouts[d].map(e=>({id:uid(),name:e.name,sets:e.sets.map(s=>({w:'',r:'',done:false,warm:!!s.warm}))})));commit();
 }
 async function delEx(id){if(!await ask('Удалить упражнение из тренировки?'))return;S.workouts[day]=wk(day).filter(e=>e.id!==id);commit()}
-function addSet(id){const e=exOf(id),l=e.sets.filter(s=>!s.warm).at(-1);e.sets.push(isCardio(e.name)?{t:l?.t??'',km:l?.km??'',done:false,warm:false}:{w:l?.w??'',r:l?.r??'',done:false,warm:false});commit()}
-function addWarm(id){const e=exOf(id);e.sets.splice(e.sets.filter(s=>s.warm).length,0,{w:'',r:'',done:false,warm:true});commit()}
+function addSet(id){const e=exOf(id),l=e.sets.filter(s=>!s.warm).at(-1);e.sets.push(isCardio(e.name)?{t:l?.t??'',km:l?.km??'',done:false,warm:false}:{w:l?.w??'',r:l?.r??'',done:false,warm:false});commitEx(id)}
+function addWarm(id){const e=exOf(id);e.sets.splice(e.sets.filter(s=>s.warm).length,0,{w:'',r:'',done:false,warm:true});commitEx(id)}
 // removes the last working set; the last warm-up only when no working sets are left
-function popSet(id){const e=exOf(id),i=e.sets.map(s=>!s.warm).lastIndexOf(true);e.sets.splice(i<0?e.sets.length-1:i,1);commit()}
+function popSet(id){const e=exOf(id),i=e.sets.map(s=>!s.warm).lastIndexOf(true);e.sets.splice(i<0?e.sets.length-1:i,1);commitEx(id)}
 function setVal(id,i,k,v){exOf(id).sets[i][k]=v;save()}
-function toggleWarm(id,i){const s=exOf(id).sets[i];s.warm=!s.warm;commit()}
+function toggleWarm(id,i){const s=exOf(id).sets[i];s.warm=!s.warm;commitEx(id)}
 function doneSet(id,i){
   const e=exOf(id),s=e.sets[i],p=prevSet(e,i,prevEx(e.name,day));
   s.done=!s.done;
   if(s.done&&isCardio(e.name)){if(!s.t&&p?.t)s.t=p.t;if(!s.km&&p?.km)s.km=p.km}
   else if(s.done){if(s.w===''&&p)s.w=p.w;if(s.r===''&&p)s.r=p.r;startRest(num(S.settings.rest)||120)}
-  commit();
+  commitEx(id);
+}
+// set-level edits: redraw only the touched card and the gym blocks that count sets; full render if the layout would change
+function commitEx(id){
+  save();
+  const e=tab==='gym'&&exOf(id);if(!e||!document.getElementById('ex-'+id))return render();
+  const parts=[['ex-'+id,exCard(e)],['gstat',gymStats()],['wg',weekGroupsCard()]];
+  if(parts.some(([k,h])=>!document.getElementById(k)!==!h))return render();
+  for(const [k,h] of parts)if(h)document.getElementById(k).outerHTML=h;
+  const rc=document.getElementById('rc-'+day);if(rc)rc.outerHTML=recentRow(day);
+  applyPress();
 }
 
-// rest timer
-let restEnd=0,restTick,ac;
-function startRest(sec){try{ac||=new AudioContext()}catch{}restEnd=Date.now()+sec*1000;clearInterval(restTick);restTick=setInterval(tickRest,250);tickRest()}
+// rest timer: the end time is kept in localStorage (not in S, so it never syncs) and the service worker notifies when the app is in the background
+const REST_KEY='apex.rest';
+let restEnd=0,restTick,restAlarm,ac;
+try{restEnd=+localStorage.getItem(REST_KEY)||0}catch{}
+function setRest(end){
+  restEnd=end;try{end?localStorage.setItem(REST_KEY,end):localStorage.removeItem(REST_KEY)}catch{}
+  const sw=navigator.serviceWorker?.controller;sw?.postMessage({type:'rest',end});
+  clearTimeout(restAlarm);if(end&&!sw)restAlarm=setTimeout(restNotify,end-Date.now());
+  clearInterval(restTick);if(end)restTick=setInterval(tickRest,250);tickRest();
+}
+function startRest(sec){
+  try{ac||=new AudioContext()}catch{}
+  try{if(window.Notification?.permission==='default')Notification.requestPermission()?.catch?.(()=>{})}catch{}
+  setRest(Date.now()+sec*1000);
+}
 function tickRest(){
   const el=$('#rest'),left=Math.ceil((restEnd-Date.now())/1000);
-  if(left<=0){clearInterval(restTick);el.hidden=true;restEnd=0;beep();navigator.vibrate?.([200,100,200]);return}
+  if(!restEnd){el.hidden=true;return}
+  if(left<=0){const late=Date.now()-restEnd>5000;clearInterval(restTick);el.hidden=true;restEnd=0;try{localStorage.removeItem(REST_KEY)}catch{}
+    if(!late){beep();navigator.vibrate?.([200,100,200])}return}
   el.hidden=false;el.querySelector('b').textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
 }
-function restAdd(n){restEnd+=n*1000;tickRest()}
-function restStop(){clearInterval(restTick);restEnd=0;$('#rest').hidden=true}
-function beep(){try{[0,.3].forEach(t=>{const o=ac.createOscillator(),g=ac.createGain(),c=ac.currentTime+t;o.frequency.value=880;g.gain.setValueAtTime(.25,c);g.gain.exponentialRampToValueAtTime(.001,c+.25);o.connect(g).connect(ac.destination);o.start(c);o.stop(c+.25)})}catch{}}
+// fallback when there is no service worker: a page notification, shown only if the app is hidden
+function restNotify(){try{if(document.hidden&&Notification.permission==='granted')new Notification('Отдых окончен',{body:'Пора на следующий подход',tag:'rest',icon:'icon-192.png'})}catch{}}
+function restAdd(n){if(restEnd)setRest(restEnd+n*1000)}
+function restStop(){setRest(0)}
+if(restEnd)setRest(restEnd);
+function beep(){try{ac||=new AudioContext();[0,.3].forEach(t=>{const o=ac.createOscillator(),g=ac.createGain(),c=ac.currentTime+t;o.frequency.value=880;g.gain.setValueAtTime(.25,c);g.gain.exponentialRampToValueAtTime(.001,c+.25);o.connect(g).connect(ac.destination);o.start(c);o.stop(c+.25)})}catch{}}
 
 // ---------- food ----------
 const fd=d=>S.food[d]||={items:[],quick:null};
@@ -882,6 +1000,43 @@ function weightStats(){
   return {weekly,pw,zone,eta,bulk};
 }
 
+// ---------- gym blocks (also redrawn one by one by commitEx) ----------
+let prN={}; // records per exercise card of the shown day
+function exCard(e){
+  const p=prevEx(e.name,day),best=bestBefore(e.name,day),cue=progNote(e.name),pn=prevNote(e.name,day),no={w:0,k:0};
+  prN[e.id]=0;
+  if(isCardio(e.name))return cardioCard(e,p,cue,pn);
+  const tg=nextTarget(e.name,day);
+  const row=i=>{const s=e.sets[i],ps=prevSet(e,i,p),pr=s.done&&!s.warm&&best>0&&e1(s)>best;if(pr)prN[e.id]++;
+    return `<div class="set ${s.warm?'warm':''} ${s.done?'done':''} ${pr?'pr':''}">
+    <button class="n ${s.warm?'w':''}" onclick="toggleWarm('${e.id}',${i})" title="${s.warm?'Сделать рабочим':'Сделать разминочным'}">${s.warm?'Р'+(++no.w):++no.k}</button>
+    <span class="prev">${ps&&ps.w!==''?`${esc(ps.w)} × ${esc(ps.r)}`:'—'}</span>
+    <input inputmode="decimal" value="${esc(s.w)}" placeholder="${esc(ps?.w||'кг')}" oninput="setVal('${e.id}',${i},'w',this.value)" aria-label="Вес">
+    <input inputmode="numeric" value="${esc(s.r)}" placeholder="${esc(ps?.r||'повт')}" oninput="setVal('${e.id}',${i},'r',this.value)" aria-label="Повторы">
+    <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Подход выполнен"></button></div>`};
+  const idx=e.sets.map((s,i)=>i),warm=idx.filter(i=>e.sets[i].warm),work=idx.filter(i=>!e.sets[i].warm),g=groupOf(e.name);
+  const rows=(warm.length?`<div class="warm-h">Разминка</div>${warm.map(row).join('')}${work.length?'<div class="warm-h work">Рабочие</div>':''}`:'')+work.map(row).join('');
+  return `<div class="card" id="ex-${e.id}"><h2 class="exh"><span class="exn">${esc(e.name)}${e.sets.some(s=>s.done&&!s.warm&&best>0&&e1(s)>best)?' <span title="Рекорд">🔥</span>':''}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
+  ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">Программа</span>${esc(cue)}</div></div>`:''}
+  ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
+  ${tg?`<div class="sug"><span class="lbl">Цель</span><b>${tg.w?`${tg.w} кг × ${tg.r}`:`${tg.r} повт.`}${tg.sets?` <small class="mut">· ${tg.sets} подх.</small>`:''}</b><span class="sm mut">${esc(tg.why)}</span>${e.sets.filter(s=>!s.warm).length<tg.sets||e.sets.some(s=>!s.warm&&!s.done&&(s.w===''&&tg.w||s.r===''))?`<button class="fit" onclick="useTarget('${e.id}')">Подставить</button>`:''}</div>`:''}
+  <div class="set h"><span>Сет</span><span>Прошлый</span><span>Вес, кг</span><span>Повторы</span><span></span></div>${rows}
+  <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ Подход</button><button onclick="addWarm('${e.id}')">+ Разминка</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="Убрать подход">−</button>`:''}</div>
+  <textarea class="exnote" rows="1" placeholder="Заметка" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea>
+  ${best?`<div class="sm mut" style="margin-top:8px">Лучший 1ПМ: ${r1(best)} кг</div>`:''}</div>`}
+function gymStats(){
+  const w=wk(day),vol=dayVolume(day),nSets=sum(w.filter(e=>!isCardio(e.name)).map(e=>e.sets.filter(isWork).length)),prs=sum(w.map(e=>prN[e.id]||0));
+  return `<div class="grid g3" id="gstat">
+    <div class="card"><div class="lbl">Объём, кг</div><div class="big">${fmt(vol)}</div></div>
+    <div class="card"><div class="lbl">Подходов</div><div class="big">${nSets}</div></div>
+    <div class="card"><div class="lbl">Рекорды</div><div class="big ${prs?'down':''}">${prs}</div></div></div>`;
+}
+function recentCard(){
+  const recent=Object.keys(S.workouts).filter(d=>S.workouts[d].length).sort().reverse().slice(0,6);
+  return recent.length?`<div class="card" id="recent"><h2>Последние тренировки</h2><div class="list">${recent.map(recentRow).join('')}</div></div>`:'';
+}
+const recentRow=d=>`<div class="item" id="rc-${d}" onclick="goDay('${d}')" style="cursor:pointer"><div class="t">${fmtDay(d,{weekday:'short',day:'numeric',month:'long'})}<div class="sm mut">${S.workouts[d].map(e=>esc(e.name)).join(', ')}</div></div><span class="sm">${[dayVolume(d)&&fmt(dayVolume(d))+' кг',dayCardio(d)&&r1(dayCardio(d))+' мин'].filter(Boolean).join(' · ')||'—'}</span></div>`;
+
 // ---------- views ----------
 const V={
 home(){
@@ -919,35 +1074,9 @@ plan(){
     <input id="gTitle" placeholder="Цель" style="flex:2 1 180px" onkeydown="event.key==='Enter'&&addGoal()"><select id="gParent">${goalOptions('Верхний уровень')}</select><button class="btn-a fit" onclick="addGoal()">Добавить</button></div></div>`;
 },
 gym(){
-  const w=wk(day),vol=dayVolume(day),nSets=sum(w.filter(e=>!isCardio(e.name)).map(e=>e.sets.filter(isWork).length));
-  const recent=Object.keys(S.workouts).filter(d=>S.workouts[d].length).sort().reverse().slice(0,6);
-
-  let prs=0;
-  const cards=w.map(e=>{
-    const p=prevEx(e.name,day),best=bestBefore(e.name,day),cue=progNote(e.name),pn=prevNote(e.name,day),no={w:0,k:0};
-    if(isCardio(e.name))return cardioCard(e,p,cue,pn);
-    const tg=nextTarget(e.name,day);
-    const row=i=>{const s=e.sets[i],ps=prevSet(e,i,p),pr=s.done&&!s.warm&&best>0&&e1(s)>best;if(pr)prs++;
-      return `<div class="set ${s.warm?'warm':''} ${s.done?'done':''} ${pr?'pr':''}">
-      <button class="n ${s.warm?'w':''}" onclick="toggleWarm('${e.id}',${i})" title="${s.warm?'Сделать рабочим':'Сделать разминочным'}">${s.warm?'Р'+(++no.w):++no.k}</button>
-      <span class="prev">${ps&&ps.w!==''?`${esc(ps.w)} × ${esc(ps.r)}`:'—'}</span>
-      <input inputmode="decimal" value="${esc(s.w)}" placeholder="${esc(ps?.w||'кг')}" oninput="setVal('${e.id}',${i},'w',this.value)" aria-label="Вес">
-      <input inputmode="numeric" value="${esc(s.r)}" placeholder="${esc(ps?.r||'повт')}" oninput="setVal('${e.id}',${i},'r',this.value)" aria-label="Повторы">
-      <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Подход выполнен"></button></div>`};
-    const idx=e.sets.map((s,i)=>i),warm=idx.filter(i=>e.sets[i].warm),work=idx.filter(i=>!e.sets[i].warm),g=groupOf(e.name);
-    const rows=(warm.length?`<div class="warm-h">Разминка</div>${warm.map(row).join('')}${work.length?'<div class="warm-h work">Рабочие</div>':''}`:'')+work.map(row).join('');
-    return `<div class="card"><h2 class="exh"><span class="exn">${esc(e.name)}${e.sets.some(s=>s.done&&!s.warm&&best>0&&e1(s)>best)?' <span title="Рекорд">🔥</span>':''}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
-    ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">Программа</span>${esc(cue)}</div></div>`:''}
-    ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
-    ${tg?`<div class="sug"><span class="lbl">Цель</span><b>${tg.w?`${tg.w} кг × ${tg.r}`:`${tg.r} повт.`}</b><span class="sm mut">${esc(tg.why)}</span>${e.sets.some(s=>!s.warm&&!s.done&&(s.w===''&&tg.w||s.r===''))?`<button class="fit" onclick="useTarget('${e.id}')">Подставить</button>`:''}</div>`:''}
-    <div class="set h"><span>Сет</span><span>Прошлый</span><span>Вес, кг</span><span>Повторы</span><span></span></div>${rows}
-    <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ Подход</button><button onclick="addWarm('${e.id}')">+ Разминка</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="Убрать подход">−</button>`:''}</div>
-    <textarea class="exnote" rows="1" placeholder="Заметка" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea>
-    ${best?`<div class="sm mut" style="margin-top:8px">Лучший 1ПМ: ${r1(best)} кг</div>`:''}</div>`}).join('');
-  return `<div class="grid g3">
-    <div class="card"><div class="lbl">Объём, кг</div><div class="big">${fmt(vol)}</div></div>
-    <div class="card"><div class="lbl">Подходов</div><div class="big">${nSets}</div></div>
-    <div class="card"><div class="lbl">Рекорды</div><div class="big ${prs?'down':''}">${prs}</div></div></div>
+  const w=wk(day),recent=Object.keys(S.workouts).filter(d=>S.workouts[d].length).sort().reverse().slice(0,6);
+  const cards=w.map(exCard).join('');
+  return `${gymStats()}
   ${weekGroupsCard()}
   ${progCard()}
   <div class="card hot"><h2>Добавить упражнение</h2>
@@ -958,7 +1087,7 @@ gym(){
   ${cards}
 
   ${lbCard()}
-  ${recent.length?`<div class="card"><h2>Последние тренировки</h2><div class="list">${recent.map(d=>`<div class="item" onclick="goDay('${d}')" style="cursor:pointer"><div class="t">${fmtDay(d,{weekday:'short',day:'numeric',month:'long'})}<div class="sm mut">${S.workouts[d].map(e=>esc(e.name)).join(', ')}</div></div><span class="sm">${[dayVolume(d)&&fmt(dayVolume(d))+' кг',dayCardio(d)&&r1(dayCardio(d))+' мин'].filter(Boolean).join(' · ')||'—'}</span></div>`).join('')}</div></div>`:''}`;
+  ${recentCard()}`;
 },
 body(){
   const w=lastWeight(),fw=weights()[0],names=liftNames(),ex=names.includes(S.ui.ex)?S.ui.ex:names[0],hist=ex?exHistory(ex).slice(-30):[];
@@ -1267,11 +1396,7 @@ function progNote(name){
   for(const d of days){const e=exs(d).find(x=>low(x.n)===k&&x.c);if(e)return e.c}
   return '';
 }
-function prevNote(name,d){
-  const k=low(name);
-  for(const dd of Object.keys(S.workouts).filter(x=>x<d).sort().reverse()){const e=S.workouts[dd].find(x=>low(x.name)===k&&x.note);if(e)return {d:dd,t:e.note}}
-  return null;
-}
+function prevNote(name,d){const x=hxLast(name,d,e=>e.note);return x&&{d:x.d,t:x.e.note}}
 function progAttach(v){S.progDay[day]=v;commit()}
 function progAdd(names){
   const have=new Set(wk(day).map(e=>low(e.name)));
@@ -1347,7 +1472,7 @@ function cardioCard(e,p,cue,pn){
       <input inputmode="decimal" value="${esc(s.t)}" placeholder="${esc(ps?.t||'мин')}" oninput="setVal('${e.id}',${i},'t',this.value)" aria-label="Минуты">
       <input inputmode="decimal" value="${esc(s.km)}" placeholder="${esc(ps?.km||'км')}" oninput="setVal('${e.id}',${i},'km',this.value)" aria-label="Километры">
       <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Отрезок выполнен"></button></div>`}).join('');
-  return `<div class="card"><h2 class="exh"><span class="exn">${esc(e.name)}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
+  return `<div class="card" id="ex-${e.id}"><h2 class="exh"><span class="exn">${esc(e.name)}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
     ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">Программа</span>${esc(cue)}</div></div>`:''}
     ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
     <div class="set h"><span>№</span><span>Прошлый</span><span>Минуты</span><span>Км</span><span></span></div>${rows}
@@ -1370,13 +1495,15 @@ function weekGroupsCard(){
 }
 
 // ---------- research popup ----------
-// STUDIES comes from studies.js (2000 PubMed records)
+// STUDIES comes from studies.js (2000 PubMed records, ~350 KB), loaded only when the popup first opens
 const TYPES={M:'Мета-анализ',S:'Обзор',R:'РКИ'};
-let sciHist=[],sciPos=-1;
+let sciHist=[],sciPos=-1,studiesP=null;
+const haveStudies=()=>typeof STUDIES!=='undefined';
+function loadStudies(){return studiesP||=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='studies.js';sc.onload=ok;sc.onerror=()=>{studiesP=null;sc.remove();no()};document.head.appendChild(sc)})}
 function sciShow(){const [id,y,j,t,k]=STUDIES[sciHist[sciPos]];$('#sciT').textContent=t;$('#sciS').textContent=j+' · '+y;$('#sciN').textContent=TYPES[k];$('#sciL').href='https://pubmed.ncbi.nlm.nih.gov/'+id+'/';const p=$('#sciT');p.classList.remove('swap');void p.offsetWidth;p.classList.add('swap')}
-function sciNext(){if(sciPos<sciHist.length-1)sciPos++;else{sciHist.push(Math.floor(Math.random()*STUDIES.length));sciPos=sciHist.length-1}sciShow()}
+function sciNext(){if(!haveStudies())return;if(sciPos<sciHist.length-1)sciPos++;else{sciHist.push(Math.floor(Math.random()*STUDIES.length));sciPos=sciHist.length-1}sciShow()}
 function sciPrev(){if(sciPos>0){sciPos--;sciShow()}}
-function sciToggle(on=$('#sci').hidden){$('#sci').hidden=!on;if(on&&sciPos<0)sciNext()}
+async function sciToggle(on=$('#sci').hidden){$('#sci').hidden=!on;if(!on||sciPos>=0)return;if(!haveStudies()){$('#sciT').textContent='Загрузка…';try{await loadStudies()}catch{$('#sciT').textContent='Нет связи — попробуйте позже';return}}if(sciPos<0)sciNext()}
 function sciAuto(){if(S.ui.sciDay===today())return;S.ui.sciDay=today();save();sciToggle(true)}
 
 // ---------- month calendar ----------
