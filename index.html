@@ -298,7 +298,6 @@ select.gsel{width:auto;flex:0 0 auto;padding:3px 8px;font-size:12px;font-weight:
   <div class="row" style="margin-top:8px"><button onclick="resetAll()" style="color:var(--acc2)">Стереть всё</button></div>
 </dialog>
 
-<script src="studies.js"></script>
 <script>
 // ---------- utils ----------
 const $=s=>document.querySelector(s);
@@ -1254,13 +1253,15 @@ function weekGroupsCard(){
 }
 
 // ---------- research popup ----------
-// STUDIES comes from studies.js (2000 PubMed records)
+// STUDIES comes from studies.js (2000 PubMed records, ~350 KB), loaded only when the popup first opens
 const TYPES={M:'Мета-анализ',S:'Обзор',R:'РКИ'};
-let sciHist=[],sciPos=-1;
+let sciHist=[],sciPos=-1,studiesP=null;
+const haveStudies=()=>typeof STUDIES!=='undefined';
+function loadStudies(){return studiesP||=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='studies.js';sc.onload=ok;sc.onerror=()=>{studiesP=null;sc.remove();no()};document.head.appendChild(sc)})}
 function sciShow(){const [id,y,j,t,k]=STUDIES[sciHist[sciPos]];$('#sciT').textContent=t;$('#sciS').textContent=j+' · '+y;$('#sciN').textContent=TYPES[k];$('#sciL').href='https://pubmed.ncbi.nlm.nih.gov/'+id+'/';const p=$('#sciT');p.classList.remove('swap');void p.offsetWidth;p.classList.add('swap')}
-function sciNext(){if(sciPos<sciHist.length-1)sciPos++;else{sciHist.push(Math.floor(Math.random()*STUDIES.length));sciPos=sciHist.length-1}sciShow()}
+function sciNext(){if(!haveStudies())return;if(sciPos<sciHist.length-1)sciPos++;else{sciHist.push(Math.floor(Math.random()*STUDIES.length));sciPos=sciHist.length-1}sciShow()}
 function sciPrev(){if(sciPos>0){sciPos--;sciShow()}}
-function sciToggle(on=$('#sci').hidden){$('#sci').hidden=!on;if(on&&sciPos<0)sciNext()}
+async function sciToggle(on=$('#sci').hidden){$('#sci').hidden=!on;if(!on||sciPos>=0)return;if(!haveStudies()){$('#sciT').textContent='Загрузка…';try{await loadStudies()}catch{$('#sciT').textContent='Нет связи — попробуйте позже';return}}if(sciPos<0)sciNext()}
 function sciAuto(){if(S.ui.sciDay===today())return;S.ui.sciDay=today();save();sciToggle(true)}
 
 // ---------- month calendar ----------
