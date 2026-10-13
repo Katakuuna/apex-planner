@@ -99,6 +99,20 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 .macros{flex:1 1 220px;display:flex;flex-direction:column;gap:12px}
 .fgrid{display:grid;grid-template-columns:2fr repeat(5,1fr);gap:8px}
 @media(max-width:600px){.fgrid{grid-template-columns:repeat(3,1fr)}.fgrid>:first-child{grid-column:1/-1}}
+/* food search: dropdown of personal + built-in + Open Food Facts results */
+.card:has(.fres:not([hidden])){position:relative;z-index:6}
+.fsearch{position:relative}.fsearch input{scroll-margin-top:calc(12px + env(safe-area-inset-top))}
+.fres{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:5;max-height:min(360px,55vh);overflow:auto;background:var(--card2);border-radius:14px;box-shadow:inset 0 0 0 .5px var(--hair),0 12px 36px #000000a0;padding:4px}
+.fres .r{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer}
+.fres .r:hover,.fres .r.on{background:var(--glass-hi)}
+.fres .r .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.fres .r .k{font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fres .r .x{padding:2px 8px;background:none;box-shadow:none;color:var(--mut)}
+.fres .h{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--rose);padding:8px 10px 4px}
+.fres .m{padding:9px 10px;font-size:13px;color:var(--mut)}
+.src{font-size:10px;font-weight:600;padding:1px 6px;border-radius:999px;margin-left:6px;vertical-align:1px;background:var(--glass);color:var(--rose)}
+.recent{display:flex;gap:6px;overflow-x:auto;margin:10px 0 0;padding-bottom:2px;scrollbar-width:none}.recent::-webkit-scrollbar{display:none}
+.recent button{padding:6px 12px;font-size:13px;border-radius:999px;flex:0 0 auto}
 details summary{cursor:pointer;font-weight:600}details[open] summary{margin-bottom:12px}
 /* matte liquid tab bar: one chili capsule (.pill) flows between tabs */
 nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));display:flex;gap:2px;padding:5px;background:#1d1416bf;backdrop-filter:blur(30px) saturate(1.5);-webkit-backdrop-filter:blur(30px) saturate(1.5);border-radius:999px;z-index:10;box-shadow:inset 0 0 0 .5px var(--hair),0 10px 36px #00000080}
@@ -353,6 +367,7 @@ dialog h2{margin-bottom:16px}
   <div class="row" style="margin-top:8px"><button onclick="resetAll()" style="color:var(--acc2)">Стереть всё</button></div>
 </dialog>
 
+<script src="foods.js"></script>
 <script>
 // ---------- utils ----------
 const $=s=>document.querySelector(s);
@@ -886,12 +901,84 @@ function totals(d){
   if(f.quick)return f.quick;
   return ['kcal','p','f','c'].reduce((o,k)=>(o[k]=sum(f.items.map(i=>i[k])),o),{});
 }
-function fillFood(v){const x=S.foods[low(v)];if(!x)return;['k','p','f','c'].forEach(k=>$('#f_'+k).value=x[k])}
+// Search: personal base (S.foods, synced; remembers uses, last time and portion) → built-in base (foods.js) → Open Food Facts.
+const fkey=s=>low(s).replace(/ё/g,'е');
+const fmatch=(name,q)=>{const n=fkey(name);return q.split(/\s+/).every(w=>n.includes(w))};
+const fscore=x=>(x.n||0)+((x.t||0)>Date.now()-14*864e5?5:0); // used often or recently → first
+const mine=()=>Object.values(S.foods).sort((a,b)=>fscore(b)-fscore(a)||(b.t||0)-(a.t||0));
+const BASE=(typeof FOODS_BASE!=='undefined'?FOODS_BASE:[]).map(([name,k,p,f,c])=>({name,k,p,f,c,src:'base'}));
+let fRes=[],fSel=-1,fT=0,fAbort=null,fQ='';
+const offCache={};
+function offItem(x){
+  const n=x.nutriments||{},name=(x.product_name_ru||x.product_name||x.generic_name||'').trim(),br=[].concat(x.brands||[]).join(', ').split(',')[0].trim();
+  const k=n['energy-kcal_100g']??(n.energy_100g!=null?n.energy_100g/4.184:null);
+  if(!name||k==null)return null;
+  return {name:br&&!fkey(name).includes(fkey(br))?`${name} (${br})`:name,k:r1(+k),p:r1(+n.proteins_100g||0),f:r1(+n.fat_100g||0),c:r1(+n.carbohydrates_100g||0),src:'off',code:x.code};
+}
+async function offFetch(q,signal){
+  if(offCache[q])return offCache[q];
+  const F='code,product_name,product_name_ru,generic_name,brands,nutriments',to=AbortSignal.any?AbortSignal.any([signal,AbortSignal.timeout(9000)]):signal;
+  let list;
+  if(/^\d{8,14}$/.test(q)){ // barcode
+    const j=await (await fetch(`https://world.openfoodfacts.org/api/v2/product/${q}.json?fields=${F}`,{signal:to})).json();
+    list=j.product?[j.product]:[];
+  }else{
+    try{const j=await (await fetch(`https://search.openfoodfacts.org/search?q=${encodeURIComponent(q)}&langs=ru&page_size=20&fields=${F}`,{signal:to})).json();list=j.hits||[]}
+    catch(e){if(signal.aborted)throw e;
+      const j=await (await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&json=1&page_size=20&fields=${F}`,{signal:to})).json();list=j.products||[]}
+  }
+  const seen=new Set();
+  return offCache[q]=list.map(offItem).filter(x=>x&&!seen.has(fkey(x.name))&&seen.add(fkey(x.name)));
+}
+function foodSearch(v){
+  const q=fkey(v);fQ=q;clearTimeout(fT);fAbort?.abort();
+  if(!q){fRes=[];fDraw();return}
+  const own=mine().filter(x=>fmatch(x.name,q)),has=new Set(own.map(x=>fkey(x.name)));
+  const base=/^\d+$/.test(q)?[]:BASE.filter(x=>fmatch(x.name,q)&&!has.has(fkey(x.name)));
+  fRes=[...own.slice(0,8).map(x=>({...x,src:'my'})),...base.slice(0,8)];fSel=-1;
+  if(q.length<3){fDraw();return}
+  fDraw('load');
+  fT=setTimeout(async()=>{
+    const ac=fAbort=new AbortController();
+    try{const off=(await offFetch(q,ac.signal)).filter(x=>!has.has(fkey(x.name)));if(fQ!==q)return;fRes=[...fRes.filter(x=>x.src!=='off'),...off];fDraw(off.length?'':'none')}
+    catch(e){if(!ac.signal.aborted&&fQ===q)fDraw('err')}
+  },450);
+}
+function fDraw(state){
+  const el=$('#fRes');if(!el)return;
+  if(!fQ){el.hidden=true;return}
+  const row=(x,i)=>`<div class="r${i===fSel?' on':''}" onmousedown="event.preventDefault()" onclick="pickFood(${i})"><div class="t">${esc(x.name)}<span class="src">${{my:'моё',base:'база',off:'OFF'}[x.src]}</span><div class="sm mut">Б ${r1(x.p)} · Ж ${r1(x.f)} · У ${r1(x.c)}${x.src==='my'&&x.g?` · обычно ${fmt(x.g)} г`:''}</div></div><span class="k">${fmt(x.k)} ккал</span>${x.src==='my'?`<button class="x" title="Убрать из моей базы" onmousedown="event.preventDefault()" onclick="event.stopPropagation();forgetFood(${i})">×</button>`:''}</div>`;
+  const loc=fRes.filter(x=>x.src!=='off'),off=fRes.filter(x=>x.src==='off');
+  el.innerHTML=(loc.length?loc.map(row).join(''):'')
+    +(off.length?`<div class="h">Open Food Facts</div>`+off.map((x,i)=>row(x,i+loc.length)).join(''):'')
+    +({load:'<div class="m">Ищу в Open Food Facts…</div>',err:`<div class="m">Open Food Facts недоступен${navigator.onLine?'':' (нет сети)'} — показана только своя база.</div>`,none:loc.length?'':'<div class="m">Ничего не нашлось. Введите КБЖУ вручную — продукт сохранится в вашу базу.</div>'}[state]||'');
+  el.hidden=!el.innerHTML;
+}
+function foodKey(e){
+  const n=fRes.length,el=$('#fRes');
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){if(!n)return;e.preventDefault();fSel=(fSel+(e.key==='ArrowDown'?1:n-1))%n;fDraw();el.querySelector('.on')?.scrollIntoView({block:'nearest'})}
+  else if(e.key==='Enter'){e.preventDefault();if(fSel>=0)pickFood(fSel);else $('#f_g').focus()}
+  else if(e.key==='Escape'){fQ='';fDraw()}
+}
+function setFood(x){
+  $('#f_name').value=x.name;['k','p','f','c'].forEach(k=>$('#f_'+k).value=x[k]);
+  const g=S.foods[fkey(x.name)]?.g;$('#f_g').value=g||'';$('#f_g').placeholder=g?'г':'г (100)';
+  fQ='';fDraw();$('#f_g').focus();$('#f_g').select();
+}
+function pickFood(i){const x=fRes[i];if(x)setFood(x)}
+function pickRecent(i){const x=mine()[i];if(x)setFood(x)}
+async function forgetFood(i){const x=fRes[i];if(!x||!await ask(`Убрать «${x.name}» из вашей базы продуктов?`))return;delete S.foods[fkey(x.name)];save();foodSearch($('#f_name').value)}
 function addFood(){
   const name=$('#f_name').value.trim();if(!name)return;
-  const g=num($('#f_g').value)||100,[k,p,f,c]=['k','p','f','c'].map(i=>num($('#f_'+i).value));
-  S.foods[low(name)]={name,k,p,f,c};
+  const g=num($('#f_g').value)||100,[k,p,f,c]=['k','p','f','c'].map(i=>num($('#f_'+i).value)),key=fkey(name),old=S.foods[key]||S.foods[low(name)];
+  if(old&&key!==low(name))delete S.foods[low(name)];
+  S.foods[key]={...old,name,k,p,f,c,g,n:(old?.n||0)+1,t:Date.now()};
   fd(day).items.push({id:uid(),name,g,kcal:k*g/100,p:p*g/100,f:f*g/100,c:c*g/100});commit();
+  setTimeout(()=>$('#f_name')?.focus(),0);
+}
+function againFood(id){ // repeat an item from today's list with the same portion
+  const i=fd(day).items.find(x=>x.id===id);if(!i)return;fd(day).items.push({...i,id:uid()});
+  const x=S.foods[fkey(i.name)];if(x){x.n=(x.n||0)+1;x.t=Date.now()}commit();
 }
 function delFood(id){fd(day).items=fd(day).items.filter(i=>i.id!==id);commit()}
 function setQuick(clear){
@@ -1037,10 +1124,10 @@ food(){
   <div class="card"><h2>Вода<span class="sp"></span><span class="sm mut">${fmt(wtr)} / ${fmt(st.water)} мл</span></h2><div class="bar" style="margin-bottom:12px"><i style="width:${wtr/num(st.water)*100}%;background:var(--carb)"></i></div>
     <div class="row"><button onclick="addWater(250)">+250</button><button onclick="addWater(500)">+500</button><button onclick="addWater(-250)">−250</button></div></div>
   <div class="card"><h2>Продукты</h2>${f.quick?'<p class="sm down" style="margin-bottom:10px">Используется «итог дня» — список ниже не учитывается.</p>':''}
-    <div class="fgrid"><input id="f_name" list="foodList" placeholder="Продукт" onchange="fillFood(this.value)"><input id="f_g" inputmode="decimal" placeholder="г"><input id="f_k" inputmode="decimal" placeholder="ккал/100"><input id="f_p" inputmode="decimal" placeholder="Б/100"><input id="f_f" inputmode="decimal" placeholder="Ж/100"><input id="f_c" inputmode="decimal" placeholder="У/100"></div>
-    <datalist id="foodList">${Object.values(S.foods).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
+    <div class="fgrid"><div class="fsearch"><input id="f_name" placeholder="Найти продукт или штрихкод" autocomplete="off" enterkeyhint="search" onfocus="this.scrollIntoView({block:'start',behavior:'smooth'})" oninput="foodSearch(this.value)" onkeydown="foodKey(event)" onblur="setTimeout(()=>{if(document.activeElement?.id!=='f_name'){fQ='';fDraw()}},150)"><div id="fRes" class="fres" hidden></div></div><input id="f_g" inputmode="decimal" placeholder="г"><input id="f_k" inputmode="decimal" placeholder="ккал/100"><input id="f_p" inputmode="decimal" placeholder="Б/100"><input id="f_f" inputmode="decimal" placeholder="Ж/100"><input id="f_c" inputmode="decimal" placeholder="У/100"></div>
+    ${Object.keys(S.foods).length?`<div class="recent">${mine().slice(0,12).map((x,i)=>`<button onclick="pickRecent(${i})">${esc(x.name)}</button>`).join('')}</div>`:''}
     <button class="btn-a" style="margin:10px 0 12px" onclick="addFood()">Добавить</button>
-    ${f.items.length?`<div class="list">${f.items.map(i=>`<div class="item"><div class="t">${esc(i.name)} <span class="sm mut">${fmt(i.g)} г</span><div class="sm mut">Б ${r1(i.p)} · Ж ${r1(i.f)} · У ${r1(i.c)}</div></div><span>${fmt(i.kcal)} ккал</span><button class="x" onclick="delFood('${i.id}')">×</button></div>`).join('')}</div>`:'<p class="empty">Пока пусто.</p>'}</div>
+    ${f.items.length?`<div class="list">${f.items.map(i=>`<div class="item"><div class="t">${esc(i.name)} <span class="sm mut">${fmt(i.g)} г</span><div class="sm mut">Б ${r1(i.p)} · Ж ${r1(i.f)} · У ${r1(i.c)}</div></div><span>${fmt(i.kcal)} ккал</span><button class="x" title="Ещё раз" onclick="againFood('${i.id}')">+</button><button class="x" onclick="delFood('${i.id}')">×</button></div>`).join('')}</div>`:'<p class="empty">Пока пусто.</p>'}</div>
   <div class="card"><details ${f.quick?'open':''}><summary>Итог дня из FatSecret / MyFitnessPal</summary>
     <div class="row"><input id="q_k" inputmode="decimal" placeholder="Ккал" value="${f.quick?.kcal??''}"><input id="q_p" inputmode="decimal" placeholder="Б" value="${f.quick?.p??''}"><input id="q_f" inputmode="decimal" placeholder="Ж" value="${f.quick?.f??''}"><input id="q_c" inputmode="decimal" placeholder="У" value="${f.quick?.c??''}"></div>
     <div class="row" style="margin-top:10px"><button class="btn-a" onclick="setQuick()">Сохранить итог</button>${f.quick?`<button onclick="setQuick(true)">Убрать итог</button>`:''}</div></details></div>
