@@ -300,7 +300,6 @@ select.gsel{width:auto;flex:0 0 auto;padding:3px 8px;font-size:12px;font-weight:
   <div class="row" style="margin-top:8px"><button onclick="resetAll()" style="color:var(--acc2)">Стереть всё</button></div>
 </dialog>
 
-<script src="studies.js"></script>
 <script>
 // ---------- utils ----------
 const $=s=>document.querySelector(s);
@@ -327,9 +326,14 @@ const DEF={settings:{kcal:2700,p:180,f:70,c:250,maint:2500,water:3000,goalWeight
 function norm(d){const s={...structuredClone(DEF),...d};s.settings={...DEF.settings,...d.settings};s.ui||={};return s}
 function load(){let d={};try{d=JSON.parse(localStorage.getItem(KEY))||{}}catch{}return norm(d)}
 let S=load(),tab=S.ui.tab||'home',day=today();
-function localSave(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){if(!cloud)toast('Не удалось сохранить на устройстве: '+e.message+'. Сделайте экспорт в настройках.')}}
-function save(){localSave();if(cloud){clearTimeout(syncT);syncT=setTimeout(pushCloud,800)}}
+let saveT=0;
+function localSave(){clearTimeout(saveT);saveT=0;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){if(!cloud)toast('Не удалось сохранить на устройстве: '+e.message+'. Сделайте экспорт в настройках.')}}
+// rapid edits (each keystroke, each set tick) coalesce into one write; flushed when the page is hidden or closed
+function save(){clearTimeout(saveT);saveT=setTimeout(localSave,400);if(cloud){clearTimeout(syncT);syncT=setTimeout(pushCloud,800)}}
 function commit(){save();render()}
+const flushSave=()=>{if(saveT)localSave()};
+addEventListener('pagehide',flushSave);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)flushSave()});
 try{navigator.storage?.persist?.()}catch{}
 
 // in-page confirm & toast (alert/confirm are blocked inside claude.ai)
@@ -347,6 +351,7 @@ function shards(s){
 }
 function applyShard(id,v){
   const [k,m]=id.split('~');if(!(k in DEF)||k==='ui')return;
+  if(k==='workouts')HX=null;
   if(!m){S[k]=k==='settings'?{...DEF.settings,...v}:v;return}
   for(const d of Object.keys(S[k]))if(d.startsWith(m))delete S[k][d];
   Object.assign(S[k],v||{});
@@ -419,6 +424,7 @@ function sbInit(){
 }
 function mergeShard(id,v){ // first login on a device: keep local entries, cloud wins on the same date/id
   const [k,m]=id.split('~');if(!(k in DEF)||k==='ui')return;
+  if(k==='workouts')HX=null;
   if(m||k==='foods'){S[k]={...S[k],...v};return}
   if(k==='settings'){S.settings={...S.settings,...v};return}
   if(Array.isArray(v)){const ids=new Set(v.map(x=>x.id));S[k]=[...v,...(S[k]||[]).filter(x=>!ids.has(x.id))];return}
@@ -586,10 +592,12 @@ function render(){
   const isToday=day===today();
   $('#date').textContent=isToday?'Сегодня, '+new Date(day+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):fmtDay(day,{weekday:'short',day:'numeric',month:'long'});
   $('#todayBtn').hidden=isToday;
+  HX=null;
   $('main').innerHTML=V[tab]();
   if(tab==='gym')sciAuto();
-  if(pressPath){let el=$('main');for(const i of pressPath)el=el?.children[i];el?.classList.add('pop');pressPath=null}
+  applyPress();
 }
+function applyPress(){if(pressPath){let el=$('main');for(const i of pressPath)el=el?.children[i];el?.classList.add('pop');pressPath=null}}
 
 // ---------- charts ----------
 // ponytail: points spaced by index, not by date; switch to time-scaled x if gaps matter
@@ -689,12 +697,23 @@ const isWork=s=>s.done&&!s.warm; // counts toward weekly working sets (bodyweigh
 function prevSet(e,i,p){const s=e.sets[i],k=e.sets.slice(0,i).filter(x=>!!x.warm===!!s.warm).length;return p?.sets.filter(x=>!!x.warm===!!s.warm)[k]}
 const dayVolume=d=>sum((S.workouts[d]||[]).flatMap(e=>working(e.sets)).map(s=>num(s.w)*num(s.r)));
 const allEx=()=>[...new Set([...Object.values(S.workouts).flat().map(e=>e.name),...DEFAULT_EX])];
-function prevEx(name,d){
-  const k=low(name);
-  for(const dd of Object.keys(S.workouts).filter(x=>x<d).sort().reverse()){const e=S.workouts[dd].find(x=>low(x.name)===k&&x.sets.length);if(e)return {d:dd,sets:e.sets}}
-  return null;
+// per-exercise history index: low(name) -> [{d,e}] by date, then by order within the day.
+// Holds the exercise objects themselves, so set edits show up without a rebuild; any full render() or synced
+// workouts shard drops it and the next lookup rebuilds it.
+let HX=null,HXw=null;
+function hx(name){
+  if(!HX||HXw!==S.workouts){HX=new Map();HXw=S.workouts;
+    for(const d of Object.keys(S.workouts).sort())for(const e of S.workouts[d]){const k=low(e.name);HX.has(k)?HX.get(k).push({d,e}):HX.set(k,[{d,e}])}}
+  return HX.get(low(name))||[];
 }
-function bestBefore(name,d){const k=low(name);let b=0;for(const [dd,a] of Object.entries(S.workouts))if(dd<d)for(const e of a)if(low(e.name)===k)for(const s of working(e.sets))b=Math.max(b,e1(s));return b}
+// latest date before d with an entry passing f; within that date the first match wins
+function hxLast(name,d,f){
+  const a=hx(name);let r=null;
+  for(let i=a.length-1;i>=0;i--){const x=a[i];if(x.d>=d)continue;if(r&&x.d!==r.d)break;if(f(x.e))r=x}
+  return r;
+}
+function prevEx(name,d){const x=hxLast(name,d,e=>e.sets.length);return x&&{d:x.d,sets:x.e.sets}}
+function bestBefore(name,d){let b=0;for(const x of hx(name)){if(x.d>=d)break;for(const s of working(x.e.sets))b=Math.max(b,e1(s))}return b}
 // next-session target (double progression): add reps up to the top of the range, then add weight and drop to the bottom.
 // Range: "N×6-8" / "6-8" in the program comment, else the settings range, else 6–8.
 // On a cut it holds weight × reps and only adds weight once the top of the range is hit; off a cut it never drops below ~90% of the best e1RM.
@@ -726,8 +745,8 @@ function progSpec(c){
   return o.sets||o.pct||o.rir!=null?o:null;
 }
 // recent strength level: best e1RM over the last 6 weeks (on a cut the all-time best is stale), else all-time best
-function e1Base(name,d){const k=low(name),from=addDays(d,-42);let b=0;
-  for(const [dd,a] of Object.entries(S.workouts))if(dd<d&&dd>=from)for(const e of a)if(low(e.name)===k)for(const s of working(e.sets))b=Math.max(b,e1(s));
+function e1Base(name,d){const from=addDays(d,-42);let b=0;
+  for(const x of hx(name)){if(x.d>=d)break;if(x.d>=from)for(const s of working(x.e.sets))b=Math.max(b,e1(s))}
   return b||bestBefore(name,d)}
 // target from the program's %1RM or RPE/RIR and the Epley formula; falls back to history (histTarget). Sets count comes from "N×reps".
 function nextTarget(name,d){
@@ -741,7 +760,7 @@ const rg0=t=>String(t||'').match(/\d{1,2}/)?.[0];
 // fill empty, not-yet-done working sets with the target; add working sets up to the program's count
 function useTarget(id){const e=exOf(id),t=nextTarget(e.name,day);if(!t)return;
   for(let n=e.sets.filter(s=>!s.warm).length;n<t.sets;n++)e.sets.push({w:'',r:'',done:false,warm:false});
-  for(const s of e.sets)if(!s.warm&&!s.done){if(s.w===''&&t.w)s.w=String(t.w);if(s.r==='')s.r=String(t.r)}commit()}
+  for(const s of e.sets)if(!s.warm&&!s.done){if(s.w===''&&t.w)s.w=String(t.w);if(s.r==='')s.r=String(t.r)}commitEx(id)}
 function exHistory(name){
   const k=low(name);
   return Object.keys(S.workouts).sort().map(d=>{const sets=S.workouts[d].filter(e=>low(e.name)===k).flatMap(e=>working(e.sets));
@@ -757,31 +776,58 @@ function repeatLast(){
   wk(day).push(...S.workouts[d].map(e=>({id:uid(),name:e.name,sets:e.sets.map(s=>({w:'',r:'',done:false,warm:!!s.warm}))})));commit();
 }
 async function delEx(id){if(!await ask('Удалить упражнение из тренировки?'))return;S.workouts[day]=wk(day).filter(e=>e.id!==id);commit()}
-function addSet(id){const e=exOf(id),l=e.sets.filter(s=>!s.warm).at(-1);e.sets.push(isCardio(e.name)?{t:l?.t??'',km:l?.km??'',done:false,warm:false}:{w:l?.w??'',r:l?.r??'',done:false,warm:false});commit()}
-function addWarm(id){const e=exOf(id);e.sets.splice(e.sets.filter(s=>s.warm).length,0,{w:'',r:'',done:false,warm:true});commit()}
+function addSet(id){const e=exOf(id),l=e.sets.filter(s=>!s.warm).at(-1);e.sets.push(isCardio(e.name)?{t:l?.t??'',km:l?.km??'',done:false,warm:false}:{w:l?.w??'',r:l?.r??'',done:false,warm:false});commitEx(id)}
+function addWarm(id){const e=exOf(id);e.sets.splice(e.sets.filter(s=>s.warm).length,0,{w:'',r:'',done:false,warm:true});commitEx(id)}
 // removes the last working set; the last warm-up only when no working sets are left
-function popSet(id){const e=exOf(id),i=e.sets.map(s=>!s.warm).lastIndexOf(true);e.sets.splice(i<0?e.sets.length-1:i,1);commit()}
+function popSet(id){const e=exOf(id),i=e.sets.map(s=>!s.warm).lastIndexOf(true);e.sets.splice(i<0?e.sets.length-1:i,1);commitEx(id)}
 function setVal(id,i,k,v){exOf(id).sets[i][k]=v;save()}
-function toggleWarm(id,i){const s=exOf(id).sets[i];s.warm=!s.warm;commit()}
+function toggleWarm(id,i){const s=exOf(id).sets[i];s.warm=!s.warm;commitEx(id)}
 function doneSet(id,i){
   const e=exOf(id),s=e.sets[i],p=prevSet(e,i,prevEx(e.name,day));
   s.done=!s.done;
   if(s.done&&isCardio(e.name)){if(!s.t&&p?.t)s.t=p.t;if(!s.km&&p?.km)s.km=p.km}
   else if(s.done){if(s.w===''&&p)s.w=p.w;if(s.r===''&&p)s.r=p.r;startRest(num(S.settings.rest)||120)}
-  commit();
+  commitEx(id);
+}
+// set-level edits: redraw only the touched card and the gym blocks that count sets; full render if the layout would change
+function commitEx(id){
+  save();
+  const e=tab==='gym'&&exOf(id);if(!e||!document.getElementById('ex-'+id))return render();
+  const parts=[['ex-'+id,exCard(e)],['gstat',gymStats()],['wg',weekGroupsCard()]];
+  if(parts.some(([k,h])=>!document.getElementById(k)!==!h))return render();
+  for(const [k,h] of parts)if(h)document.getElementById(k).outerHTML=h;
+  const rc=document.getElementById('rc-'+day);if(rc)rc.outerHTML=recentRow(day);
+  applyPress();
 }
 
-// rest timer
-let restEnd=0,restTick,ac;
-function startRest(sec){try{ac||=new AudioContext()}catch{}restEnd=Date.now()+sec*1000;clearInterval(restTick);restTick=setInterval(tickRest,250);tickRest()}
+// rest timer: the end time is kept in localStorage (not in S, so it never syncs) and the service worker notifies when the app is in the background
+const REST_KEY='apex.rest';
+let restEnd=0,restTick,restAlarm,ac;
+try{restEnd=+localStorage.getItem(REST_KEY)||0}catch{}
+function setRest(end){
+  restEnd=end;try{end?localStorage.setItem(REST_KEY,end):localStorage.removeItem(REST_KEY)}catch{}
+  const sw=navigator.serviceWorker?.controller;sw?.postMessage({type:'rest',end});
+  clearTimeout(restAlarm);if(end&&!sw)restAlarm=setTimeout(restNotify,end-Date.now());
+  clearInterval(restTick);if(end)restTick=setInterval(tickRest,250);tickRest();
+}
+function startRest(sec){
+  try{ac||=new AudioContext()}catch{}
+  try{if(window.Notification?.permission==='default')Notification.requestPermission()?.catch?.(()=>{})}catch{}
+  setRest(Date.now()+sec*1000);
+}
 function tickRest(){
   const el=$('#rest'),left=Math.ceil((restEnd-Date.now())/1000);
-  if(left<=0){clearInterval(restTick);el.hidden=true;restEnd=0;beep();navigator.vibrate?.([200,100,200]);return}
+  if(!restEnd){el.hidden=true;return}
+  if(left<=0){const late=Date.now()-restEnd>5000;clearInterval(restTick);el.hidden=true;restEnd=0;try{localStorage.removeItem(REST_KEY)}catch{}
+    if(!late){beep();navigator.vibrate?.([200,100,200])}return}
   el.hidden=false;el.querySelector('b').textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
 }
-function restAdd(n){restEnd+=n*1000;tickRest()}
-function restStop(){clearInterval(restTick);restEnd=0;$('#rest').hidden=true}
-function beep(){try{[0,.3].forEach(t=>{const o=ac.createOscillator(),g=ac.createGain(),c=ac.currentTime+t;o.frequency.value=880;g.gain.setValueAtTime(.25,c);g.gain.exponentialRampToValueAtTime(.001,c+.25);o.connect(g).connect(ac.destination);o.start(c);o.stop(c+.25)})}catch{}}
+// fallback when there is no service worker: a page notification, shown only if the app is hidden
+function restNotify(){try{if(document.hidden&&Notification.permission==='granted')new Notification('Отдых окончен',{body:'Пора на следующий подход',tag:'rest',icon:'icon-192.png'})}catch{}}
+function restAdd(n){if(restEnd)setRest(restEnd+n*1000)}
+function restStop(){setRest(0)}
+if(restEnd)setRest(restEnd);
+function beep(){try{ac||=new AudioContext();[0,.3].forEach(t=>{const o=ac.createOscillator(),g=ac.createGain(),c=ac.currentTime+t;o.frequency.value=880;g.gain.setValueAtTime(.25,c);g.gain.exponentialRampToValueAtTime(.001,c+.25);o.connect(g).connect(ac.destination);o.start(c);o.stop(c+.25)})}catch{}}
 
 // ---------- food ----------
 const fd=d=>S.food[d]||={items:[],quick:null};
@@ -816,6 +862,43 @@ function weightStats(){
   const eta=(goal-lv)/weekly>0?Math.ceil((goal-lv)/weekly):null;
   return {weekly,pw,zone,eta,bulk};
 }
+
+// ---------- gym blocks (also redrawn one by one by commitEx) ----------
+let prN={}; // records per exercise card of the shown day
+function exCard(e){
+  const p=prevEx(e.name,day),best=bestBefore(e.name,day),cue=progNote(e.name),pn=prevNote(e.name,day),no={w:0,k:0};
+  prN[e.id]=0;
+  if(isCardio(e.name))return cardioCard(e,p,cue,pn);
+  const tg=nextTarget(e.name,day);
+  const row=i=>{const s=e.sets[i],ps=prevSet(e,i,p),pr=s.done&&!s.warm&&best>0&&e1(s)>best;if(pr)prN[e.id]++;
+    return `<div class="set ${s.warm?'warm':''} ${s.done?'done':''} ${pr?'pr':''}">
+    <button class="n ${s.warm?'w':''}" onclick="toggleWarm('${e.id}',${i})" title="${s.warm?'Сделать рабочим':'Сделать разминочным'}">${s.warm?'Р'+(++no.w):++no.k}</button>
+    <span class="prev">${ps&&ps.w!==''?`${esc(ps.w)} × ${esc(ps.r)}`:'—'}</span>
+    <input inputmode="decimal" value="${esc(s.w)}" placeholder="${esc(ps?.w||'кг')}" oninput="setVal('${e.id}',${i},'w',this.value)" aria-label="Вес">
+    <input inputmode="numeric" value="${esc(s.r)}" placeholder="${esc(ps?.r||'повт')}" oninput="setVal('${e.id}',${i},'r',this.value)" aria-label="Повторы">
+    <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Подход выполнен"></button></div>`};
+  const idx=e.sets.map((s,i)=>i),warm=idx.filter(i=>e.sets[i].warm),work=idx.filter(i=>!e.sets[i].warm),g=groupOf(e.name);
+  const rows=(warm.length?`<div class="warm-h">Разминка</div>${warm.map(row).join('')}${work.length?'<div class="warm-h work">Рабочие</div>':''}`:'')+work.map(row).join('');
+  return `<div class="card" id="ex-${e.id}"><h2 class="exh"><span class="exn">${esc(e.name)}${e.sets.some(s=>s.done&&!s.warm&&best>0&&e1(s)>best)?' <span title="Рекорд">🔥</span>':''}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
+  ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">Программа</span>${esc(cue)}</div></div>`:''}
+  ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
+  ${tg?`<div class="sug"><span class="lbl">Цель</span><b>${tg.w?`${tg.w} кг × ${tg.r}`:`${tg.r} повт.`}${tg.sets?` <small class="mut">· ${tg.sets} подх.</small>`:''}</b><span class="sm mut">${esc(tg.why)}</span>${e.sets.filter(s=>!s.warm).length<tg.sets||e.sets.some(s=>!s.warm&&!s.done&&(s.w===''&&tg.w||s.r===''))?`<button class="fit" onclick="useTarget('${e.id}')">Подставить</button>`:''}</div>`:''}
+  <div class="set h"><span>Сет</span><span>Прошлый</span><span>Вес, кг</span><span>Повторы</span><span></span></div>${rows}
+  <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ Подход</button><button onclick="addWarm('${e.id}')">+ Разминка</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="Убрать подход">−</button>`:''}</div>
+  <textarea class="exnote" rows="1" placeholder="Заметка" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea>
+  ${best?`<div class="sm mut" style="margin-top:8px">Лучший 1ПМ: ${r1(best)} кг</div>`:''}</div>`}
+function gymStats(){
+  const w=wk(day),vol=dayVolume(day),nSets=sum(w.filter(e=>!isCardio(e.name)).map(e=>e.sets.filter(isWork).length)),prs=sum(w.map(e=>prN[e.id]||0));
+  return `<div class="grid g3" id="gstat">
+    <div class="card"><div class="lbl">Объём, кг</div><div class="big">${fmt(vol)}</div></div>
+    <div class="card"><div class="lbl">Подходов</div><div class="big">${nSets}</div></div>
+    <div class="card"><div class="lbl">Рекорды</div><div class="big ${prs?'down':''}">${prs}</div></div></div>`;
+}
+function recentCard(){
+  const recent=Object.keys(S.workouts).filter(d=>S.workouts[d].length).sort().reverse().slice(0,6);
+  return recent.length?`<div class="card" id="recent"><h2>Последние тренировки</h2><div class="list">${recent.map(recentRow).join('')}</div></div>`:'';
+}
+const recentRow=d=>`<div class="item" id="rc-${d}" onclick="goDay('${d}')" style="cursor:pointer"><div class="t">${fmtDay(d,{weekday:'short',day:'numeric',month:'long'})}<div class="sm mut">${S.workouts[d].map(e=>esc(e.name)).join(', ')}</div></div><span class="sm">${[dayVolume(d)&&fmt(dayVolume(d))+' кг',dayCardio(d)&&r1(dayCardio(d))+' мин'].filter(Boolean).join(' · ')||'—'}</span></div>`;
 
 // ---------- views ----------
 const V={
@@ -854,35 +937,9 @@ plan(){
     <input id="gTitle" placeholder="Цель" style="flex:2 1 180px" onkeydown="event.key==='Enter'&&addGoal()"><select id="gParent">${goalOptions('Верхний уровень')}</select><button class="btn-a fit" onclick="addGoal()">Добавить</button></div></div>`;
 },
 gym(){
-  const w=wk(day),vol=dayVolume(day),nSets=sum(w.filter(e=>!isCardio(e.name)).map(e=>e.sets.filter(isWork).length));
-  const recent=Object.keys(S.workouts).filter(d=>S.workouts[d].length).sort().reverse().slice(0,6);
-
-  let prs=0;
-  const cards=w.map(e=>{
-    const p=prevEx(e.name,day),best=bestBefore(e.name,day),cue=progNote(e.name),pn=prevNote(e.name,day),no={w:0,k:0};
-    if(isCardio(e.name))return cardioCard(e,p,cue,pn);
-    const tg=nextTarget(e.name,day);
-    const row=i=>{const s=e.sets[i],ps=prevSet(e,i,p),pr=s.done&&!s.warm&&best>0&&e1(s)>best;if(pr)prs++;
-      return `<div class="set ${s.warm?'warm':''} ${s.done?'done':''} ${pr?'pr':''}">
-      <button class="n ${s.warm?'w':''}" onclick="toggleWarm('${e.id}',${i})" title="${s.warm?'Сделать рабочим':'Сделать разминочным'}">${s.warm?'Р'+(++no.w):++no.k}</button>
-      <span class="prev">${ps&&ps.w!==''?`${esc(ps.w)} × ${esc(ps.r)}`:'—'}</span>
-      <input inputmode="decimal" value="${esc(s.w)}" placeholder="${esc(ps?.w||'кг')}" oninput="setVal('${e.id}',${i},'w',this.value)" aria-label="Вес">
-      <input inputmode="numeric" value="${esc(s.r)}" placeholder="${esc(ps?.r||'повт')}" oninput="setVal('${e.id}',${i},'r',this.value)" aria-label="Повторы">
-      <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Подход выполнен"></button></div>`};
-    const idx=e.sets.map((s,i)=>i),warm=idx.filter(i=>e.sets[i].warm),work=idx.filter(i=>!e.sets[i].warm),g=groupOf(e.name);
-    const rows=(warm.length?`<div class="warm-h">Разминка</div>${warm.map(row).join('')}${work.length?'<div class="warm-h work">Рабочие</div>':''}`:'')+work.map(row).join('');
-    return `<div class="card"><h2 class="exh"><span class="exn">${esc(e.name)}${e.sets.some(s=>s.done&&!s.warm&&best>0&&e1(s)>best)?' <span title="Рекорд">🔥</span>':''}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
-    ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">Программа</span>${esc(cue)}</div></div>`:''}
-    ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
-    ${tg?`<div class="sug"><span class="lbl">Цель</span><b>${tg.w?`${tg.w} кг × ${tg.r}`:`${tg.r} повт.`}${tg.sets?` <small class="mut">· ${tg.sets} подх.</small>`:''}</b><span class="sm mut">${esc(tg.why)}</span>${e.sets.filter(s=>!s.warm).length<tg.sets||e.sets.some(s=>!s.warm&&!s.done&&(s.w===''&&tg.w||s.r===''))?`<button class="fit" onclick="useTarget('${e.id}')">Подставить</button>`:''}</div>`:''}
-    <div class="set h"><span>Сет</span><span>Прошлый</span><span>Вес, кг</span><span>Повторы</span><span></span></div>${rows}
-    <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ Подход</button><button onclick="addWarm('${e.id}')">+ Разминка</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="Убрать подход">−</button>`:''}</div>
-    <textarea class="exnote" rows="1" placeholder="Заметка" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea>
-    ${best?`<div class="sm mut" style="margin-top:8px">Лучший 1ПМ: ${r1(best)} кг</div>`:''}</div>`}).join('');
-  return `<div class="grid g3">
-    <div class="card"><div class="lbl">Объём, кг</div><div class="big">${fmt(vol)}</div></div>
-    <div class="card"><div class="lbl">Подходов</div><div class="big">${nSets}</div></div>
-    <div class="card"><div class="lbl">Рекорды</div><div class="big ${prs?'down':''}">${prs}</div></div></div>
+  const w=wk(day),recent=Object.keys(S.workouts).filter(d=>S.workouts[d].length).sort().reverse().slice(0,6);
+  const cards=w.map(exCard).join('');
+  return `${gymStats()}
   ${weekGroupsCard()}
   ${progCard()}
   <div class="card hot"><h2>Добавить упражнение</h2>
@@ -893,7 +950,7 @@ gym(){
   ${cards}
 
   ${lbCard()}
-  ${recent.length?`<div class="card"><h2>Последние тренировки</h2><div class="list">${recent.map(d=>`<div class="item" onclick="goDay('${d}')" style="cursor:pointer"><div class="t">${fmtDay(d,{weekday:'short',day:'numeric',month:'long'})}<div class="sm mut">${S.workouts[d].map(e=>esc(e.name)).join(', ')}</div></div><span class="sm">${[dayVolume(d)&&fmt(dayVolume(d))+' кг',dayCardio(d)&&r1(dayCardio(d))+' мин'].filter(Boolean).join(' · ')||'—'}</span></div>`).join('')}</div></div>`:''}`;
+  ${recentCard()}`;
 },
 body(){
   const w=lastWeight(),fw=weights()[0],names=liftNames(),ex=names.includes(S.ui.ex)?S.ui.ex:names[0],hist=ex?exHistory(ex).slice(-30):[];
@@ -1202,11 +1259,7 @@ function progNote(name){
   for(const d of days){const e=exs(d).find(x=>low(x.n)===k&&x.c);if(e)return e.c}
   return '';
 }
-function prevNote(name,d){
-  const k=low(name);
-  for(const dd of Object.keys(S.workouts).filter(x=>x<d).sort().reverse()){const e=S.workouts[dd].find(x=>low(x.name)===k&&x.note);if(e)return {d:dd,t:e.note}}
-  return null;
-}
+function prevNote(name,d){const x=hxLast(name,d,e=>e.note);return x&&{d:x.d,t:x.e.note}}
 function progAttach(v){S.progDay[day]=v;commit()}
 function progAdd(names){
   const have=new Set(wk(day).map(e=>low(e.name)));
@@ -1282,7 +1335,7 @@ function cardioCard(e,p,cue,pn){
       <input inputmode="decimal" value="${esc(s.t)}" placeholder="${esc(ps?.t||'мин')}" oninput="setVal('${e.id}',${i},'t',this.value)" aria-label="Минуты">
       <input inputmode="decimal" value="${esc(s.km)}" placeholder="${esc(ps?.km||'км')}" oninput="setVal('${e.id}',${i},'km',this.value)" aria-label="Километры">
       <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="Отрезок выполнен"></button></div>`}).join('');
-  return `<div class="card"><h2 class="exh"><span class="exn">${esc(e.name)}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
+  return `<div class="card" id="ex-${e.id}"><h2 class="exh"><span class="exn">${esc(e.name)}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
     ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">Программа</span>${esc(cue)}</div></div>`:''}
     ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
     <div class="set h"><span>№</span><span>Прошлый</span><span>Минуты</span><span>Км</span><span></span></div>${rows}
@@ -1305,13 +1358,15 @@ function weekGroupsCard(){
 }
 
 // ---------- research popup ----------
-// STUDIES comes from studies.js (2000 PubMed records)
+// STUDIES comes from studies.js (2000 PubMed records, ~350 KB), loaded only when the popup first opens
 const TYPES={M:'Мета-анализ',S:'Обзор',R:'РКИ'};
-let sciHist=[],sciPos=-1;
+let sciHist=[],sciPos=-1,studiesP=null;
+const haveStudies=()=>typeof STUDIES!=='undefined';
+function loadStudies(){return studiesP||=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='studies.js';sc.onload=ok;sc.onerror=()=>{studiesP=null;sc.remove();no()};document.head.appendChild(sc)})}
 function sciShow(){const [id,y,j,t,k]=STUDIES[sciHist[sciPos]];$('#sciT').textContent=t;$('#sciS').textContent=j+' · '+y;$('#sciN').textContent=TYPES[k];$('#sciL').href='https://pubmed.ncbi.nlm.nih.gov/'+id+'/';const p=$('#sciT');p.classList.remove('swap');void p.offsetWidth;p.classList.add('swap')}
-function sciNext(){if(sciPos<sciHist.length-1)sciPos++;else{sciHist.push(Math.floor(Math.random()*STUDIES.length));sciPos=sciHist.length-1}sciShow()}
+function sciNext(){if(!haveStudies())return;if(sciPos<sciHist.length-1)sciPos++;else{sciHist.push(Math.floor(Math.random()*STUDIES.length));sciPos=sciHist.length-1}sciShow()}
 function sciPrev(){if(sciPos>0){sciPos--;sciShow()}}
-function sciToggle(on=$('#sci').hidden){$('#sci').hidden=!on;if(on&&sciPos<0)sciNext()}
+async function sciToggle(on=$('#sci').hidden){$('#sci').hidden=!on;if(!on||sciPos>=0)return;if(!haveStudies()){$('#sciT').textContent='Загрузка…';try{await loadStudies()}catch{$('#sciT').textContent='Нет связи — попробуйте позже';return}}if(sciPos<0)sciNext()}
 function sciAuto(){if(S.ui.sciDay===today())return;S.ui.sciDay=today();save();sciToggle(true)}
 
 // ---------- month calendar ----------
