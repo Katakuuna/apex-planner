@@ -748,17 +748,34 @@ function doneSet(id,i){
   commit();
 }
 
-// rest timer
-let restEnd=0,restTick,ac;
-function startRest(sec){try{ac||=new AudioContext()}catch{}restEnd=Date.now()+sec*1000;clearInterval(restTick);restTick=setInterval(tickRest,250);tickRest()}
+// rest timer: the end time is kept in localStorage (not in S, so it never syncs) and the service worker notifies when the app is in the background
+const REST_KEY='apex.rest';
+let restEnd=0,restTick,restAlarm,ac;
+try{restEnd=+localStorage.getItem(REST_KEY)||0}catch{}
+function setRest(end){
+  restEnd=end;try{end?localStorage.setItem(REST_KEY,end):localStorage.removeItem(REST_KEY)}catch{}
+  const sw=navigator.serviceWorker?.controller;sw?.postMessage({type:'rest',end});
+  clearTimeout(restAlarm);if(end&&!sw)restAlarm=setTimeout(restNotify,end-Date.now());
+  clearInterval(restTick);if(end)restTick=setInterval(tickRest,250);tickRest();
+}
+function startRest(sec){
+  try{ac||=new AudioContext()}catch{}
+  try{if(window.Notification?.permission==='default')Notification.requestPermission()?.catch?.(()=>{})}catch{}
+  setRest(Date.now()+sec*1000);
+}
 function tickRest(){
   const el=$('#rest'),left=Math.ceil((restEnd-Date.now())/1000);
-  if(left<=0){clearInterval(restTick);el.hidden=true;restEnd=0;beep();navigator.vibrate?.([200,100,200]);return}
+  if(!restEnd){el.hidden=true;return}
+  if(left<=0){const late=Date.now()-restEnd>5000;clearInterval(restTick);el.hidden=true;restEnd=0;try{localStorage.removeItem(REST_KEY)}catch{}
+    if(!late){beep();navigator.vibrate?.([200,100,200])}return}
   el.hidden=false;el.querySelector('b').textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
 }
-function restAdd(n){restEnd+=n*1000;tickRest()}
-function restStop(){clearInterval(restTick);restEnd=0;$('#rest').hidden=true}
-function beep(){try{[0,.3].forEach(t=>{const o=ac.createOscillator(),g=ac.createGain(),c=ac.currentTime+t;o.frequency.value=880;g.gain.setValueAtTime(.25,c);g.gain.exponentialRampToValueAtTime(.001,c+.25);o.connect(g).connect(ac.destination);o.start(c);o.stop(c+.25)})}catch{}}
+// fallback when there is no service worker: a page notification, shown only if the app is hidden
+function restNotify(){try{if(document.hidden&&Notification.permission==='granted')new Notification('Отдых окончен',{body:'Пора на следующий подход',tag:'rest',icon:'icon-192.png'})}catch{}}
+function restAdd(n){if(restEnd)setRest(restEnd+n*1000)}
+function restStop(){setRest(0)}
+if(restEnd)setRest(restEnd);
+function beep(){try{ac||=new AudioContext();[0,.3].forEach(t=>{const o=ac.createOscillator(),g=ac.createGain(),c=ac.currentTime+t;o.frequency.value=880;g.gain.setValueAtTime(.25,c);g.gain.exponentialRampToValueAtTime(.001,c+.25);o.connect(g).connect(ac.destination);o.start(c);o.stop(c+.25)})}catch{}}
 
 // ---------- food ----------
 const fd=d=>S.food[d]||={items:[],quick:null};
