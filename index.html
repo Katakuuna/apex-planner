@@ -696,12 +696,12 @@ function prevEx(name,d){
 }
 function bestBefore(name,d){const k=low(name);let b=0;for(const [dd,a] of Object.entries(S.workouts))if(dd<d)for(const e of a)if(low(e.name)===k)for(const s of working(e.sets))b=Math.max(b,e1(s));return b}
 // next-session target (double progression): add reps up to the top of the range, then add weight and drop to the bottom.
-// Range: a "6-8" in the program comment, else the settings range, else 6–8.
+// Range: "N×6-8" / "6-8" in the program comment, else the settings range, else 6–8.
 // On a cut it holds weight × reps and only adds weight once the top of the range is hit; off a cut it never drops below ~90% of the best e1RM.
-function nextTarget(name,d){
+function histTarget(name,d){
   const p=prevEx(name,d);if(!p)return null;
   const rg=t=>{const m=String(t||'').match(/(\d{1,2})\s*[-–—]\s*(\d{1,2})/);return m&&+m[1]<+m[2]&&+m[2]<=30&&[+m[1],+m[2]]};
-  const [lo,hi]=rg(progNote(name))||rg(S.settings.reps)||[6,8],cut=phase()==='cut';
+  const sp=progSpec(progNote(name)),[lo,hi]=sp?.lo?[sp.lo,sp.hi]:rg(progNote(name))||rg(S.settings.reps)||[6,8],cut=phase()==='cut';
   const ws=working(p.sets);
   if(!ws.length){const bw=p.sets.filter(s=>s.done&&!s.warm&&!num(s.w)&&num(s.r));if(!bw.length)return null;
     const r=Math.max(...bw.map(s=>num(s.r)));return cut?{w:0,r,why:`прошлый раз ${r} повт. · сушка: удержать`}:{w:0,r:r+1,why:`прошлый раз ${r} повт. · +1 повтор`}}
@@ -709,7 +709,7 @@ function nextTarget(name,d){
   const best=bestBefore(name,d),last=`${r1(w)} × ${r}`;
   let t;
   if(r>=hi)t={w:w+step,r:lo,why:`${last} во всех подходах · +${step} кг`};
-  else if(r<lo&&cut)t={w:Math.max(step,Math.floor(e1({w,r})/(1+lo/30)/step)*step),r:lo,why:`${last} · сушка: чуть меньше вес, но в ${lo}–${hi}`};
+  else if(r<lo&&cut)t={w:Math.max(step,Math.floor(e1({w,r})/(1+lo/30)/step)*step),r:lo,why:`${last} · сушка: чуть меньше вес, но в ${lo}${hi>lo?"–"+hi:""} повт.`};
   else if(r<lo)t={w,r:lo,why:`${last} · добери до ${lo} повт.`};
   else if(cut)t={w,r,why:`${last} · сушка: удержать`};
   else t={w,r:r+1,why:`${last} · +1 повтор до ${hi}`};
@@ -717,8 +717,30 @@ function nextTarget(name,d){
   if(fl>t.w){t.w=fl;t.why=`${last} · ниже формы, 90% лучшего 1ПМ (${r1(best)} кг)`}
   t.w=r1(t.w);return t;
 }
-// fill empty, not-yet-done working sets with the target
+// program comment → {sets, lo, hi, pct, rir}: "4×6", "3x6-8", "75%", "RPE 8", "RIR 2" / "2 в запасе"
+function progSpec(c){
+  c=String(c||'');const f=x=>x&&+x.replace(',','.');
+  const sr=c.match(/(\d{1,2})\s*[xх×*]\s*(\d{1,2})(?:\s*[-–—]\s*(\d{1,2}))?/i),pc=f(c.match(/(\d{2,3}(?:[.,]\d)?)\s*%/)?.[1]);
+  const rpe=f(c.match(/RPE\s*(\d{1,2}(?:[.,]5)?)/i)?.[1]),rir=f(c.match(/(?:RIR|ПВЗ)\s*(\d)|(\d)\s*(?:повт\w*\s*)?в\s*запасе/i)?.slice(1).find(Boolean));
+  const o={sets:sr?+sr[1]:0,lo:sr?+sr[2]:0,hi:sr?+(sr[3]||sr[2]):0,pct:pc>=30&&pc<=100?pc:0,rir:rir??(rpe>=5&&rpe<=10?10-rpe:null)};
+  return o.sets||o.pct||o.rir!=null?o:null;
+}
+// recent strength level: best e1RM over the last 6 weeks (on a cut the all-time best is stale), else all-time best
+function e1Base(name,d){const k=low(name),from=addDays(d,-42);let b=0;
+  for(const [dd,a] of Object.entries(S.workouts))if(dd<d&&dd>=from)for(const e of a)if(low(e.name)===k)for(const s of working(e.sets))b=Math.max(b,e1(s));
+  return b||bestBefore(name,d)}
+// target from the program's %1RM or RPE/RIR and the Epley formula; falls back to history (histTarget). Sets count comes from "N×reps".
+function nextTarget(name,d){
+  const sp=progSpec(progNote(name)),h=histTarget(name,d),base=sp&&(sp.pct||sp.rir!=null)?e1Base(name,d):0;
+  if(!base)return h&&{...h,sets:sp?.sets||0};
+  const r=sp.lo||(sp.pct?Math.max(1,Math.round(30*(100/sp.pct-1))-2):num(rg0(S.settings.reps))||6),rir=sp.rir??2;
+  const raw=sp.pct?base*sp.pct/100:base/(1+(r+rir)/30),step=raw<20?1:2.5,w=r1(Math.floor(raw/step)*step);
+  return {w,r,sets:sp.sets,why:sp.pct?`${sp.pct}% от 1ПМ ${r1(base)} кг`:`${r} повт. + ${rir} в запасе от 1ПМ ${r1(base)} кг`};
+}
+const rg0=t=>String(t||'').match(/\d{1,2}/)?.[0];
+// fill empty, not-yet-done working sets with the target; add working sets up to the program's count
 function useTarget(id){const e=exOf(id),t=nextTarget(e.name,day);if(!t)return;
+  for(let n=e.sets.filter(s=>!s.warm).length;n<t.sets;n++)e.sets.push({w:'',r:'',done:false,warm:false});
   for(const s of e.sets)if(!s.warm&&!s.done){if(s.w===''&&t.w)s.w=String(t.w);if(s.r==='')s.r=String(t.r)}commit()}
 function exHistory(name){
   const k=low(name);
@@ -852,7 +874,7 @@ gym(){
     return `<div class="card"><h2 class="exh"><span class="exn">${esc(e.name)}${e.sets.some(s=>s.done&&!s.warm&&best>0&&e1(s)>best)?' <span title="Рекорд">🔥</span>':''}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="Группа мышц">${groupList().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join('')}</select><button class="x" onclick="delEx('${e.id}')" aria-label="Удалить">×</button></h2>
     ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">Программа</span>${esc(cue)}</div></div>`:''}
     ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
-    ${tg?`<div class="sug"><span class="lbl">Цель</span><b>${tg.w?`${tg.w} кг × ${tg.r}`:`${tg.r} повт.`}</b><span class="sm mut">${esc(tg.why)}</span>${e.sets.some(s=>!s.warm&&!s.done&&(s.w===''&&tg.w||s.r===''))?`<button class="fit" onclick="useTarget('${e.id}')">Подставить</button>`:''}</div>`:''}
+    ${tg?`<div class="sug"><span class="lbl">Цель</span><b>${tg.w?`${tg.w} кг × ${tg.r}`:`${tg.r} повт.`}${tg.sets?` <small class="mut">· ${tg.sets} подх.</small>`:''}</b><span class="sm mut">${esc(tg.why)}</span>${e.sets.filter(s=>!s.warm).length<tg.sets||e.sets.some(s=>!s.warm&&!s.done&&(s.w===''&&tg.w||s.r===''))?`<button class="fit" onclick="useTarget('${e.id}')">Подставить</button>`:''}</div>`:''}
     <div class="set h"><span>Сет</span><span>Прошлый</span><span>Вес, кг</span><span>Повторы</span><span></span></div>${rows}
     <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ Подход</button><button onclick="addWarm('${e.id}')">+ Разминка</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="Убрать подход">−</button>`:''}</div>
     <textarea class="exnote" rows="1" placeholder="Заметка" oninput="exOf('${e.id}').note=this.value;save()" aria-label="Заметка к упражнению">${esc(e.note||'')}</textarea>
