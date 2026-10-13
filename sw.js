@@ -12,3 +12,24 @@ self.addEventListener('fetch', e => {
       .catch(() => c.match(e.request, { ignoreSearch: true }))
   ));
 });
+
+// Rest timer: the page posts {type:'rest', end} (end 0 cancels). Keep the worker alive until then and
+// notify only if no window is visible; a visible page beeps on its own. Platforms that suspend
+// background workers (iOS) may not deliver this.
+let restGen = 0;
+self.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type !== 'rest') return;
+  const gen = ++restGen;
+  if (!d.end) return;
+  e.waitUntil(new Promise(r => setTimeout(r, Math.max(0, d.end - Date.now()))).then(async () => {
+    if (gen !== restGen) return;
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (wins.some(w => w.visibilityState === 'visible')) return;
+    return self.registration.showNotification('Отдых окончен', { body: 'Пора на следующий подход', tag: 'rest', renotify: true, vibrate: [200, 100, 200], icon: 'icon-192.png' });
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(ws => ws[0] ? ws[0].focus() : self.clients.openWindow('./')));
+});
