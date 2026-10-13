@@ -225,6 +225,59 @@ select.gsel{width:auto;flex:0 0 auto;padding:3px 8px;font-size:12px;font-weight:
 .dot.n{background:var(--rose)}
 .vd{width:10px;height:10px;border-radius:50%;flex:0 0 auto;background:var(--rose)}.vd.g{background:var(--ok)}.vd.b{background:var(--acc2)}
 .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 12px;margin-bottom:6px}
+/* design pass: same palette; calmer hierarchy, steadier rhythm, rows that don't wrap on a phone */
+:root{--r:22px;--r-sm:14px}
+header{position:sticky;top:0;z-index:9;max-width:none;margin:calc(-16px - env(safe-area-inset-top)) -16px 14px;padding:calc(10px + env(safe-area-inset-top)) max(16px,calc(50% - 414px)) 8px;
+  background:linear-gradient(#0d0d0ee6,#0d0d0ebf);backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);box-shadow:0 .5px 0 var(--hair-soft)}
+h1{font-size:28px;letter-spacing:-.025em;line-height:1.1}
+.datebar{margin-top:6px}.datebar #date{font-size:15px}
+.datebar .ico,.top .ico{width:36px;height:36px;padding:0;display:grid;place-items:center}.datebar #todayBtn{width:auto;padding:0 12px;font-size:13px}
+.card{box-shadow:inset 0 0 0 1px var(--hair-soft),inset 0 1px 0 #ffffff0a;padding:18px 18px 20px}
+.card.hot{box-shadow:inset 0 0 0 1px var(--hair),inset 0 1px 0 #ffffff12,0 12px 40px #9b1b301f}
+h2{font-size:17px;letter-spacing:-.01em;margin-bottom:14px;min-height:28px}
+h2>button:not(.x){padding:5px 12px;font-size:13px;color:var(--rose);border-radius:999px}
+.lbl{font-size:11px;letter-spacing:.07em;margin-bottom:8px}
+.grid{gap:10px;margin-bottom:12px}
+.grid>.card{display:flex;flex-direction:column;padding:14px 16px}
+.grid>.card .sm{margin-top:auto;padding-top:6px}
+.grid .big{font-size:clamp(24px,7.4vw,32px)}.big small{white-space:nowrap}
+.grid.g3 .big{font-size:24px}
+.bar{height:6px;border-radius:999px;margin-top:10px}.bar i{border-radius:999px}
+button,input,select{min-height:40px}.chk,.x,.set .n,.set input,.seg button,.chips .x,.mtag,select.gsel,.lbmore,.calg button,.week button.d,nav button,#rest button,h2>button{min-height:0}
+.row>button:not(.fit){flex:1 1 72px}.row>input,.row>select{flex-basis:96px}
+.item{border-radius:var(--r-sm);padding:12px 14px;min-height:52px}
+.item .t{line-height:1.35}.item .chip{margin-left:2px}
+.chip{font-size:11.5px;font-weight:500;padding:2px 8px}
+.x,.x:hover{width:28px;height:28px;padding:0;display:grid;place-items:center;border-radius:50%;flex:0 0 auto}.x:hover{background:var(--glass)}
+.set{grid-template-columns:30px 1.2fr 1fr 1fr 32px;gap:6px;padding:5px 6px}
+.set .prev{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.set .n{width:30px;height:30px;padding:0;border-radius:50%;font-size:12px;font-variant-numeric:tabular-nums}
+.set input{font-variant-numeric:tabular-nums;font-weight:600}
+.sug{background:linear-gradient(90deg,#9b1b302e,#ffffff05);box-shadow:inset 0 0 0 .5px var(--hair-soft)}
+.cue{border-radius:12px}
+.empty{padding:10px 0;text-align:center}
+/* weekly bars: html, so labels keep their size at any width */
+.bars{display:grid;grid-template-columns:repeat(var(--n,7),1fr);gap:8px;height:150px;align-items:end}
+.bc{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;min-width:0}
+.bc .bt{flex:1;width:100%;max-width:34px;display:flex;align-items:flex-end;border-radius:9px;background:#e0364f12}
+.bc .br{display:block;width:100%;border-radius:9px;background:linear-gradient(var(--acc),#7a1526);transform-origin:50% 100%}
+.bc.on .br{background:linear-gradient(var(--acc2),var(--acc));box-shadow:0 4px 18px #e0364f40}
+.bc .bv{font-size:11px;font-weight:600;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap;min-height:14px;line-height:14px}
+.bc .bl{font-size:11px;color:var(--mut);text-transform:capitalize}.bc.on .bl{color:var(--txt);font-weight:600}
+.axis{font-size:11px;margin-top:8px}
+.nutri{gap:20px}
+nav{bottom:calc(12px + env(safe-area-inset-bottom))}
+#sciBtn{width:40px;height:40px;font-size:18px;min-height:0}
+dialog{border-radius:26px;padding:22px}
+dialog h2{margin-bottom:16px}
+@media(max-width:520px){
+  body{padding-left:14px;padding-right:14px}
+  header{margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
+  .card{padding:16px 16px 18px}
+  .grid:not(.g3){grid-template-columns:repeat(2,1fr)}
+  .bars{gap:6px}
+  .fgrid{grid-template-columns:repeat(12,1fr)}.fgrid>*{grid-column:span 3}.fgrid>:first-child{grid-column:span 8}.fgrid>:nth-child(2){grid-column:span 4}.fgrid input{padding:9px 8px;font-size:14px}
+}
 </style>
 </head>
 <body>
@@ -602,26 +655,23 @@ function line(pts,{goal,unit=''}={}){
   const d=pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
   const g='g'+uid(),L=pts.length-1;
   return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E0364F" stop-opacity=".35"/><stop offset="1" stop-color="#E0364F" stop-opacity="0"/></linearGradient></defs>
-  ${goal?`<line x1="${P}" x2="${W-P}" y1="${y(goal)}" y2="${y(goal)}" stroke="#8e8e93" stroke-dasharray="4 6"/><text x="${W-P}" y="${y(goal)-6}" text-anchor="end" fill="#8e8e93" font-size="13">цель ${goal}${unit}</text>`:''}
+  ${goal?`<line x1="${P}" x2="${W-P}" y1="${y(goal)}" y2="${y(goal)}" stroke="#9b8f92" stroke-opacity=".6" stroke-dasharray="4 6"/><text x="${W-P}" y="${y(goal)-8}" text-anchor="end" fill="#9b8f92" font-size="20">цель ${goal}${unit}</text>`:''}
   <path class="area" d="${d}L${x(L)},${H}L${x(0)},${H}Z" fill="url(#${g})"/>
   <path class="ln" pathLength="1" d="${d}" fill="none" stroke="#E0364F" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
   <circle cx="${x(L)}" cy="${y(pts[L].v)}" r="6" fill="#E0364F"/></svg>
   <div class="axis"><span>${esc(pts[0].l)}</span><span>${esc(pts[L].l)}</span></div>`;
 }
 function bars(items){
-  const W=600,H=150,n=items.length,bw=W/n,mx=Math.max(1,...items.map(i=>i.v));
-  return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img">${items.map((it,i)=>{
-    const h=(H-44)*it.v/mx,x=i*bw+bw*.2,w=bw*.6;
-    return `<rect class="br" style="animation-delay:${i*45}ms" x="${x}" y="${H-22-h}" width="${w}" height="${Math.max(h,2)}" rx="6" fill="${it.on?'#E0364F':'#9B1B30'}" opacity="${it.v?1:.35}"/>
-    ${it.v?`<text x="${x+w/2}" y="${H-28-h}" text-anchor="middle" fill="#f5f5f7" font-size="13">${fmt(it.v)}</text>`:''}
-    <text x="${x+w/2}" y="${H-4}" text-anchor="middle" fill="${it.on?'#f5f5f7':'#8e8e93'}" font-size="13">${esc(it.l)}</text>`}).join('')}</svg>`;
+  const mx=Math.max(1,...items.map(i=>i.v));
+  return `<div class="bars" role="img">${items.map((it,i)=>`<div class="bc ${it.on?'on':''} ${it.v?'':'z'}">
+    <span class="bv">${it.v?fmt(it.v):''}</span><div class="bt"><i class="br" style="height:${Math.max(it.v/mx*100,it.v?4:0)}%;animation-delay:${i*45}ms"></i></div><span class="bl">${esc(it.l)}</span></div>`).join('')}</div>`;
 }
 function ring(v,max){
   const C=2*Math.PI*52,p=Math.min(v/max||0,1);
-  return `<svg viewBox="0 0 120 120" class="ring"><circle cx="60" cy="60" r="52" stroke="#2a2a2e" stroke-width="11" fill="none"/>
+  return `<svg viewBox="0 0 120 120" class="ring"><circle cx="60" cy="60" r="52" stroke="#e0364f1f" stroke-width="11" fill="none"/>
   ${p>0?'':'<!--'}<circle class="arc" cx="60" cy="60" r="52" stroke="${v>max*1.05?'#ff9f0a':'#9B1B30'}" stroke-width="11" fill="none" stroke-dasharray="${C*p} ${C}" stroke-linecap="round" transform="rotate(-90 60 60)"/>${p>0?'':'-->'}
   <text x="60" y="62" text-anchor="middle" fill="#f5f5f7" font-size="22" font-weight="700">${fmt(v)}</text>
-  <text x="60" y="80" text-anchor="middle" fill="#8e8e93" font-size="10">из ${fmt(max)} ккал</text></svg>`;
+  <text x="60" y="80" text-anchor="middle" fill="#9b8f92" font-size="9.5">из ${fmt(max)} ккал</text></svg>`;
 }
 
 // ---------- tasks & goals ----------
