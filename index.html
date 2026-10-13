@@ -291,6 +291,7 @@ select.gsel{width:auto;flex:0 0 auto;padding:3px 8px;font-size:12px;font-weight:
   <div class="row"><label>Поддержка (TDEE), ккал<input data-s="maint" inputmode="numeric"></label><label>Вода, мл<input data-s="water" inputmode="numeric"></label></div>
   <div class="lbl">Тело и зал</div>
   <div class="row"><label>Целевой вес, кг<input data-s="goalWeight" inputmode="decimal"></label><label>Таймер отдыха, сек<input data-s="rest" inputmode="numeric"></label></div>
+  <div class="row"><label>Диапазон повторов<input data-s="reps" placeholder="6-8"></label></div>
   <div class="lbl" style="margin-top:6px">Аккаунт</div>
   <div id="acct" hidden></div>
   <div class="lbl" style="margin-top:12px">Данные и бэкап</div>
@@ -321,7 +322,7 @@ const low=s=>s.trim().toLowerCase();
 
 // ---------- state ----------
 const KEY='apex.v1';
-const DEF={settings:{kcal:2700,p:180,f:70,c:250,maint:2500,water:3000,goalWeight:82,rest:120},
+const DEF={settings:{kcal:2700,p:180,f:70,c:250,maint:2500,water:3000,goalWeight:82,rest:120,reps:'6-8'},
   goals:[],body:{},program:null,progDay:{},exGroups:{},tasks:{},notes:{},habits:[],habitLog:{},workouts:{},food:{},foods:{},water:{},weight:{},ui:{}};
 function norm(d){const s={...structuredClone(DEF),...d};s.settings={...DEF.settings,...d.settings};s.ui||={};return s}
 function load(){let d={};try{d=JSON.parse(localStorage.getItem(KEY))||{}}catch{}return norm(d)}
@@ -695,20 +696,24 @@ function prevEx(name,d){
 }
 function bestBefore(name,d){const k=low(name);let b=0;for(const [dd,a] of Object.entries(S.workouts))if(dd<d)for(const e of a)if(low(e.name)===k)for(const s of working(e.sets))b=Math.max(b,e1(s));return b}
 // next-session target (double progression): add reps up to the top of the range, then add weight and drop to the bottom.
-// Range comes from a "8-12" in the program comment, else 8–12. Never suggests less than ~90% of the best e1RM.
+// Range: a "6-8" in the program comment, else the settings range, else 6–8.
+// On a cut it holds weight × reps and only adds weight once the top of the range is hit; off a cut it never drops below ~90% of the best e1RM.
 function nextTarget(name,d){
   const p=prevEx(name,d);if(!p)return null;
-  const m=progNote(name).match(/(\d{1,2})\s*[-–—]\s*(\d{1,2})/),ok=m&&+m[1]<+m[2]&&+m[2]<=30,lo=ok?+m[1]:8,hi=ok?+m[2]:12;
+  const rg=t=>{const m=String(t||'').match(/(\d{1,2})\s*[-–—]\s*(\d{1,2})/);return m&&+m[1]<+m[2]&&+m[2]<=30&&[+m[1],+m[2]]};
+  const [lo,hi]=rg(progNote(name))||rg(S.settings.reps)||[6,8],cut=phase()==='cut';
   const ws=working(p.sets);
   if(!ws.length){const bw=p.sets.filter(s=>s.done&&!s.warm&&!num(s.w)&&num(s.r));if(!bw.length)return null;
-    const r=Math.max(...bw.map(s=>num(s.r)));return {w:0,r:r+1,why:`прошлый раз ${r} повт. · +1 повтор`}}
+    const r=Math.max(...bw.map(s=>num(s.r)));return cut?{w:0,r,why:`прошлый раз ${r} повт. · сушка: удержать`}:{w:0,r:r+1,why:`прошлый раз ${r} повт. · +1 повтор`}}
   const w=Math.max(...ws.map(s=>num(s.w))),top=ws.filter(s=>num(s.w)===w),r=Math.min(...top.map(s=>num(s.r))),step=w<20?1:2.5;
   const best=bestBefore(name,d),last=`${r1(w)} × ${r}`;
   let t;
   if(r>=hi)t={w:w+step,r:lo,why:`${last} во всех подходах · +${step} кг`};
+  else if(r<lo&&cut)t={w:Math.max(step,Math.floor(e1({w,r})/(1+lo/30)/step)*step),r:lo,why:`${last} · сушка: чуть меньше вес, но в ${lo}–${hi}`};
   else if(r<lo)t={w,r:lo,why:`${last} · добери до ${lo} повт.`};
+  else if(cut)t={w,r,why:`${last} · сушка: удержать`};
   else t={w,r:r+1,why:`${last} · +1 повтор до ${hi}`};
-  const fl=Math.floor(best*.9/(1+t.r/30)/step)*step;
+  const fl=cut?0:Math.floor(best*.9/(1+t.r/30)/step)*step;
   if(fl>t.w){t.w=fl;t.why=`${last} · ниже формы, 90% лучшего 1ПМ (${r1(best)} кг)`}
   t.w=r1(t.w);return t;
 }
@@ -1302,7 +1307,7 @@ function calRender(){
 document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)d.close()}));
 
 // ---------- settings & data ----------
-function openSettings(){renderAccount();document.querySelectorAll('[data-s]').forEach(i=>{i.value=S.settings[i.dataset.s];i.onchange=()=>{S.settings[i.dataset.s]=num(i.value);commit()}});settings.showModal()}
+function openSettings(){renderAccount();document.querySelectorAll('[data-s]').forEach(i=>{i.value=S.settings[i.dataset.s];i.onchange=()=>{const k=i.dataset.s;S.settings[k]=k==='reps'?i.value.trim():num(i.value);commit()}});settings.showModal()}
 async function exportData(){
   const data=JSON.stringify(S,null,1),filename=`apex-backup-${today()}.json`;
   const dl=window.claude?.use&&await claude.use('downloads');
