@@ -1145,17 +1145,17 @@ function weightCard(){
 
 // ---------- body measurements ----------
 // label rows sit at y (viewBox 540x500); ax/ay = point on the figure the leader line starts from
-const WM={k:'weight',n:'Вес',side:'l',y:44,ax:241,ay:58};
+const WM={k:'weight',n:'Вес',side:'l',y:44,ax:250,ay:62};
 const MEAS=[
-  {k:'neck',n:'Шея',side:'r',y:72,ax:270,ay:94},
-  {k:'shoulders',n:'Плечи',side:'l',y:114,ax:194,ay:126},
-  {k:'chest',n:'Грудь',side:'l',y:180,ax:232,ay:152},
-  {k:'biceps',n:'Бицепс',side:'r',y:150,ax:326,ay:166},
-  {k:'forearm',n:'Предплечье',side:'l',y:250,ax:172,ay:242},
-  {k:'waist',n:'Талия',side:'r',y:222,ax:296,ay:215,good:-1},
-  {k:'hips',n:'Ягодицы',side:'l',y:324,ax:214,ay:256},
-  {k:'thigh',n:'Бедро',side:'r',y:305,ax:288,ay:305},
-  {k:'calf',n:'Голень',side:'r',y:390,ax:289,ay:388},
+  {k:'neck',n:'Шея',side:'r',y:72,ax:274,ay:99},
+  {k:'shoulders',n:'Плечи',side:'l',y:114,ax:187,ay:128},
+  {k:'chest',n:'Грудь',side:'l',y:180,ax:234,ay:146},
+  {k:'biceps',n:'Бицепс',side:'r',y:150,ax:330,ay:166},
+  {k:'forearm',n:'Предплечье',side:'l',y:250,ax:170,ay:228},
+  {k:'waist',n:'Талия',side:'r',y:222,ax:294,ay:206,good:-1},
+  {k:'hips',n:'Ягодицы',side:'l',y:324,ax:219,ay:244},
+  {k:'thigh',n:'Бедро',side:'r',y:305,ax:288,ay:296},
+  {k:'calf',n:'Голень',side:'r',y:390,ax:288,ay:392},
 ];
 const bodyDays=()=>Object.keys(S.body).sort();
 const measHist=k=>bodyDays().filter(d=>S.body[d][k]!=null).map(d=>({d,v:S.body[d][k]}));
@@ -1213,31 +1213,43 @@ function saveMeas(){
   if(Object.keys(b).length)S.body[day]=b;else delete S.body[day];
   meas.close();commit();toast('Замеры сохранены');
 }
-// Vitruvian-style figure: circle + square of proportions, smooth outline mirrored from one half
+// Vitruvian-style figure: circle + square of proportions, smooth athletic outline mirrored from one half
 function smooth(p){
   const n=p.length,f=v=>v.toFixed(1);let d=`M${p[0][0]},${p[0][1]}`;
   for(let i=0;i<n;i++){const a=p[(i-1+n)%n],b=p[i],c=p[(i+1)%n],e=p[(i+2)%n];
     d+=`C${f(b[0]+(c[0]-a[0])/6)},${f(b[1]+(c[1]-a[1])/6)} ${f(c[0]-(e[0]-b[0])/6)},${f(c[1]-(e[1]-b[1])/6)} ${c[0]},${c[1]}`}
   return d+'Z';
 }
-const HALF=[[211,98],[250,112],[268,126],[277,160],[284,200],[299,245],[311,278],[320,300],[306,305],[297,282],[280,242],[266,204],[256,168],[246,142],[244,178],[236,215],[246,250],[251,300],[245,350],[249,388],[237,440],[253,458],[215,458],[216,440],[210,390],[212,350],[206,300],[200,274]];
-const BODY=[...HALF,...HALF.slice(0,-1).reverse().map(([x,y])=>[400-x,y])].map(([x,y])=>[x+60,y]);
+// right half from the crown down to the crotch, mirrored around x=260: one outline for head, neck and body
+const HALF=[[260,37],[272,40],[279,51],[280,65],[276,78],[268,89],[273,101],[296,110],[318,116],[332,125],[339,140],[342,158],[345,178],[350,200],[356,222],[361,242],[364,262],[369,276],[370,291],[364,302],[356,300],[352,287],[349,272],[346,262],[339,238],[330,214],[325,198],[321,180],[316,164],[310,156],[306,168],[301,186],[294,203],[294,216],[300,234],[304,252],[306,272],[302,302],[295,330],[290,352],[296,372],[298,394],[290,420],[284,440],[290,452],[286,459],[267,459],[265,447],[267,436],[271,410],[270,382],[272,352],[274,322],[270,282],[260,250]];
+const BODY=[...HALF,...HALF.slice(1,-1).reverse().map(([x,y])=>[520-x,y])];
 function figure(){
   const ticks=[];for(let i=0;i<=20;i++){const t=47+i*21.3;ticks.push(`M${t},32v${i%5?5:10}M${t},458v-${i%5?5:10}M47,${32+i*21.3}h${i%5?5:10}M473,${32+i*21.3}h-${i%5?5:10}`)}
   const trend=m=>({g:'var(--ok)',b:'var(--acc2)'})[judge(m.k)]||'var(--rose)';
   const lead=m=>{const x2=m.side==='l'?125:415,c=trend(m);
     return `<path d="M${m.ax},${m.ay}C${(m.ax+x2)/2},${m.ay} ${(m.ax+x2)/2},${m.y} ${x2},${m.y}" stroke="${c}" stroke-opacity=".55" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/>
     <circle class="pulse" cx="${m.ax}" cy="${m.ay}" r="5" fill="${c}"/><circle cx="${m.ax}" cy="${m.ay}" r="4" fill="${c}" stroke="#0D0D0E" stroke-width="1.5"/>`};
+  const body=smooth(BODY);
   return `<svg viewBox="0 0 540 500" role="img" aria-label="Фигура с замерами тела">
-  <defs><linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9B1B30" stop-opacity=".38"/><stop offset="1" stop-color="#9B1B30" stop-opacity=".06"/></linearGradient></defs>
-  <g stroke="#d98593" fill="none" opacity=".28"><circle cx="260" cy="238" r="228"/><rect x="47" y="32" width="426" height="426"/><path d="${ticks.join('')}" stroke-width=".8"/>
+  <defs><linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E0364F" stop-opacity=".42"/><stop offset=".45" stop-color="#9B1B30" stop-opacity=".3"/><stop offset="1" stop-color="#9B1B30" stop-opacity=".04"/></linearGradient>
+    <radialGradient id="sheen" cx="50%" cy="28%" r="45%"><stop offset="0" stop-color="#ffb3c0" stop-opacity=".22"/><stop offset="1" stop-color="#ffb3c0" stop-opacity="0"/></radialGradient>
+    <filter id="glow" x="-30%" y="-10%" width="160%" height="120%"><feGaussianBlur stdDeviation="9"/></filter></defs>
+  <g stroke="#d98593" fill="none" opacity=".2"><circle cx="260" cy="238" r="228"/><rect x="47" y="32" width="426" height="426"/><path d="${ticks.join('')}" stroke-width=".8"/>
     <path d="M260,10V490M30,238H490" stroke-dasharray="2 6" stroke-width=".8"/></g>
-  <g stroke="#E0364F" stroke-width="1.8" stroke-linejoin="round">
-    <path class="ln" pathLength="1" d="${smooth(BODY)}" fill="url(#skin)"/>
-    <ellipse cx="260" cy="62" rx="22" ry="27" fill="url(#skin)"/>
-    <path d="M249,87L250,99M271,87L270,99" fill="none"/></g>
-  <g stroke="#d98593" stroke-width="1" fill="none" opacity=".5">
-    <path d="M260,118V236M226,148Q244,166 258,152M294,148Q276,166 262,152M240,190h40M242,210h36M228,232Q260,244 292,232M236,346q10,6 20,0M264,346q10,6 20,0M188,170q8,10 4,26M332,170q-8,10-4,26"/></g>
+  <path d="${body}" fill="#E0364F" opacity=".22" filter="url(#glow)"/>
+  <path d="${body}" fill="url(#skin)"/><path d="${body}" fill="url(#sheen)"/>
+  <g stroke="#f0a3b0" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".45">
+    <path d="M226,116Q243,121 256,118M294,116Q277,121 264,118"/>
+    <path d="M197,128Q204,140 211,149M323,128Q316,140 309,149"/>
+    <path d="M217,150Q234,168 256,160M303,150Q286,168 264,160"/>
+    <path d="M260,124V232"/>
+    <path d="M243,178Q252,181 258,180M277,178Q268,181 262,180M243,196Q252,199 258,198M277,196Q268,199 262,198M244,214Q252,216 258,215M276,214Q268,216 262,215"/>
+    <path d="M226,170Q231,196 236,220Q246,238 258,246M294,170Q289,196 284,220Q274,238 262,246"/>
+    <path d="M188,168Q184,184 189,198M332,168Q336,184 331,198"/>
+    <path d="M231,270Q238,304 243,336M289,270Q282,304 277,336"/>
+    <path d="M236,346Q243,352 250,346M270,346Q277,352 284,346"/>
+    <path d="M234,378Q231,396 238,414M286,378Q289,396 282,414"/></g>
+  <path class="ln" pathLength="1" d="${body}" fill="none" stroke="#E0364F" stroke-width="1.8" stroke-linejoin="round"/>
   ${[WM,...MEAS].map(lead).join('')}</svg>`;
 }
 
