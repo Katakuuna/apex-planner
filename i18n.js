@@ -49,8 +49,45 @@ const exK=n=>String(n||'').trim().toLowerCase().replace(/ё/g,'е');
 const EX_ENk=new Map(Object.entries(EX_EN).map(([r,e])=>[exK(r),e])),EX_RUk=new Map(Object.entries(EX_EN).reverse().map(([r,e])=>[exK(e),r])); // first Russian name wins for a shared English one
 // the exercise catalog (exercises.js), when present, is the source of names and aliases
 const exCat=n=>typeof EX_ID!=='undefined'&&typeof exKey==='function'?EX_ID[exKey(n)]:null;
-function exLabel(n){if(LANG!=='en')return n;return exCat(n)?.en||EX_ENk.get(exK(n))||n}
-function exCanon(n){if(!n)return n;const c=exCat(n);return c?.ru&&!/[а-яё]/i.test(n)?c.ru:EX_RUk.get(exK(n))||n}
+function exLabel(n){if(LANG!=='en')return n;return exCat(n)?.en||EX_ENk.get(exK(n))||exGuess(n)}
+// names outside the catalog («Тяга верхнего блока широким хватом», «Жим гантелей сидя»): the closest catalog exercise
+// contained in the name plus the remaining words, or the words one by one, e.g. «Lat pulldown (wide grip)», «Press (dumbbell seated)»
+const EX_WORDS={
+  'жим':'press','тяга':'row','приседания':'squat','присед':'squat','выпады':'lunges','выпад':'lunge','подтягивания':'pull-ups','отжимания':'push-ups',
+  'сгибания':'curl','сгибание':'curl','разгибания':'extension','разгибание':'extension','разведения':'raise','разводка':'fly','махи':'raises','мах':'raise',
+  'сведения':'fly','сведение':'fly','подъём':'raise','подъёмы':'raises','шраги':'shrugs','протяжка':'upright row','пуловер':'pullover','мост':'bridge',
+  'становая':'deadlift','румынская':'Romanian','болгарские':'Bulgarian','французский':'French','фронтальные':'front','сумо':'sumo','гакк':'hack',
+  'гиперэкстензия':'back extension','скручивания':'crunches','скручивание':'crunch','планка':'plank','вис':'hanging','висе':'hanging',
+  'гантели':'dumbbell','гантелей':'dumbbell','гантелями':'dumbbells','гантелью':'dumbbell','штанга':'barbell','штанги':'barbell','штангой':'barbell',
+  'гиря':'kettlebell','гири':'kettlebell','гирей':'kettlebell','блок':'cable','блока':'cable','блоке':'cable','кроссовер':'crossover','кроссовере':'crossover',
+  'тренажёр':'machine','тренажёре':'machine','тренажёра':'machine','смит':'Smith','смита':'Smith','смите':'Smith','хаммер':'Hammer','хаммере':'Hammer',
+  'канат':'rope','канатом':'rope','гриф':'bar','грифом':'bar','резинка':'band','резинкой':'band','турник':'bar','брусья':'dips','брусьях':'dips',
+  'верхнего':'high','верхний':'high','нижнего':'low','нижний':'low','горизонтального':'horizontal','горизонтальная':'horizontal','вертикальная':'vertical',
+  'грудь':'chest','груди':'chest','спина':'back','спины':'back','плечи':'shoulders','дельты':'delts','дельт':'delts','бицепс':'biceps','трицепс':'triceps',
+  'ноги':'legs','ног':'leg','ногами':'legs','ногой':'leg','бедра':'thigh','бедро':'thigh','ягодицы':'glutes','ягодичный':'glute','икры':'calves','носки':'calf',
+  'пресс':'abs','голову':'head','головы':'head','головой':'head','поясу':'waist','поясе':'waist','подбородку':'chin','лицу':'face','лоб':'forehead',
+  'широким':'wide','широкий':'wide','узким':'close','узкий':'close','средним':'medium','хватом':'grip','хват':'grip','обратным':'reverse','обратный':'reverse',
+  'обратные':'reverse','прямым':'straight','нейтральным':'neutral','параллельным':'parallel','одной':'one','одна':'one','рукой':'arm','рука':'arm','руки':'arms',
+  'рук':'arms','сидя':'seated','стоя':'standing','лёжа':'lying','лежа':'lying','наклоне':'bent-over','наклонной':'incline','наклонная':'incline','наклон':'bent-over','гоблет':'goblet','ez':'EZ',
+  'отрицательным':'decline','пауза':'pause','паузой':'pause','весом':'weighted','собственным':'bodyweight','стороны':'sides','сторону':'side',
+  'боковая':'side','боковые':'side','задние':'rear','задней':'rear','передние':'front','колени':'knees','коленях':'knees','молот':'hammer','молотки':'hammer curls',
+  'бег':'running','ходьба':'walking','дорожке':'treadmill','дорожка':'treadmill','велосипед':'bike','эллипс':'elliptical','скакалка':'jump rope','плавание':'swimming',
+};
+let EXW=null,EXF=null;const exGuessed=new Map(),exGuessRu=new Map(); // shown English label → the name it came from
+function exGuess(n){
+  if(typeof exNorm!=='function')return n;
+  let r=exGuessed.get(n);if(r)return r;
+  EXF||=new Map(Object.entries(EX_WORDS).map(([ru,en])=>[exNorm(ru),en]));EXW||=new Map([...EXF].reverse().map(([ru,en])=>[exStem(ru),en]));
+  const words=exNorm(n.replace(/(\d)\s*[хx×]\s*(\d)/gi,'$1x$2')).split(' ').filter(w=>w&&!EX_STOP.has(w)),stems=words.map(exStem);
+  let base=null,bt=[];
+  for(const [sig,id] of EX_BY_SIG){const t=sig.split(' ');if(t.length>bt.length&&t.every(x=>stems.includes(x))){base=EX_ID[id].en;bt=t}}
+  const rest=words.filter((w,i)=>!bt.includes(stems[i])&&!(base&&EX_FILLER.test(w))).map(w=>EXF.get(w)||EXW.get(exStem(w))||w);
+  const out=[...new Set(rest)];
+  if(!base){if(!out.length||out.every((w,i)=>/[а-я]/.test(w)))r=n;else{const [h,...m]=out;r=h[0].toUpperCase()+h.slice(1)+(m.length?' ('+m.join(' ')+')':'')}}
+  else r=base+(out.length?' ('+out.join(' ')+')':'');
+  exGuessed.set(n,r);if(r!==n&&!exGuessRu.has(exK(r)))exGuessRu.set(exK(r),n);return r;
+}
+function exCanon(n){if(!n)return n;const c=exCat(n);return exGuessRu.get(exK(n))||(c?.ru&&!/[а-яё]/i.test(n)?c.ru:EX_RUk.get(exK(n))||n)}
 
 const EN={
   // navigation and header
