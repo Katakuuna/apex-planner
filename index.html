@@ -205,7 +205,24 @@ main.soft{animation:fadeBg .25s ease}
 .ov .tr::before{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--hair)}
 .ov .tr i{position:absolute;top:0;bottom:0;border-radius:4px}.ov .tr i.g{background:var(--ok)}.ov .tr i.b{background:var(--acc2)}
 .enter .ov .tr i{animation:fill .9s .2s var(--ease) backwards}
-.lbbar{display:flex;gap:8px;align-items:center;margin-bottom:6px}.lbbar select{flex:1 1 auto;min-width:0;padding:7px 10px;font-size:14px}.lbbar .seg{margin:0;flex-wrap:nowrap;margin-left:auto}
+.lbbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.lbpick{flex:1 1 100%;min-width:0;display:flex;align-items:center;gap:8px;padding:9px 10px 9px 12px;font-size:15px;font-weight:600;text-align:left;border-radius:14px;background:var(--field);box-shadow:inset 0 0 0 .5px var(--hair-soft)}
+.lbpick .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.lbpick .n{font-size:11px;font-weight:600;color:var(--rose);background:var(--glass);border-radius:999px;padding:1px 7px;font-variant-numeric:tabular-nums}
+.lbpick svg{width:17px;height:17px;flex:0 0 auto;fill:none;stroke:var(--mut);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* leaderboard exercise picker */
+#lbx{margin-top:calc(16px + env(safe-area-inset-top));padding-bottom:12px}
+.lbs{position:relative;margin-bottom:10px}.lbs svg{position:absolute;left:12px;top:50%;translate:0 -50%;width:18px;height:18px;fill:none;stroke:var(--mut);stroke-width:2;stroke-linecap:round;pointer-events:none}
+.lbs input{padding-left:38px;border-radius:14px;-webkit-appearance:none;appearance:none}.lbs input::-webkit-search-cancel-button{filter:grayscale(1) invert(.6)}
+.lbxl{max-height:min(56vh,480px);overflow-y:auto;margin:0 -8px;padding:0 4px;overscroll-behavior:contain;scrollbar-width:thin}
+.lbxl .h{display:flex;justify-content:space-between;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--rose);padding:10px 10px 4px}.lbxl .h span{color:var(--mut)}
+.lbxl button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;white-space:normal;background:none;box-shadow:none;border-radius:12px;padding:10px;min-height:44px}
+.lbxl button:hover{background:var(--glass)}.lbxl button.on{background:var(--glass-hi);box-shadow:inset 0 0 0 1px var(--hair)}
+.lbxl .t{flex:1;min-width:0;overflow-wrap:anywhere}.lbxl mark{background:#e0364f40;color:var(--txt);border-radius:4px;padding:0 1px}
+.lbxl .n{display:flex;align-items:center;gap:3px;font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.lbxl .n svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2}
+.lbxl .rk2{font-size:11px;font-weight:700;color:#fff;background:var(--acc);border-radius:999px;padding:2px 7px;flex:0 0 auto;font-variant-numeric:tabular-nums}
+.lbxl .m{padding:18px 10px;color:var(--mut);font-size:14px;text-align:center}.lbbar .seg{margin:0;flex-wrap:nowrap}
 .lb{list-style:none;padding:0;display:flex;flex-direction:column}
 .lb li{display:flex;align-items:center;gap:12px;padding:10px 6px;border-bottom:.5px solid var(--hair-soft)}.lb li:last-child{border-bottom:0}
 .lb li.me{background:#9b1b3038;border-radius:10px;border-bottom-color:transparent}
@@ -372,6 +389,7 @@ dialog h2{margin-bottom:16px}
   <div class="row"><button onclick="progTxt.close()">Отмена</button><button class="btn-a" onclick="progFromText($('#progTxtIn').value);progTxt.close()">Разобрать</button></div>
 </dialog>
 <dialog id="ask"><form method="dialog"><p id="askT" style="margin-bottom:16px;line-height:1.5"></p><div class="row"><button value="no">Отмена</button><button value="ok" class="btn-a">Да</button></div></form></dialog>
+<dialog id="lbx" aria-label="Упражнение"></dialog>
 <div id="toast" hidden role="status"></div>
 
 <dialog id="settings">
@@ -629,17 +647,20 @@ async function publishLifts(){
     S.ui.pubSig=sig;localSave();lbAt=0;
   }catch(e){console.warn('leaderboard publish failed',e)}
 }
-let LB={ex:null,mode:'abs',all:false,rows:[],exs:[],week:[]},lbAt=0,lbBusy=false;
+let LB={ex:S.ui.lbEx||null,mode:'abs',all:false,rows:[],exs:[],week:[]},lbAt=0,lbBusy=false;
 async function lbLoad(force){
   if(!sbUser||lbBusy||(!force&&Date.now()-lbAt<30000))return;
   lbBusy=true;
   try{
     // users on an older version still publish under the lowercased name («жим лёжа»), newer ones under the
     // exercise key ('bench_press'): group both by exKey so everyone doing one exercise lands in one list
-    const all=await sbq(sb.from('lifts').select('user_id,exercise,name').limit(2000)),grp={};
-    for(const r of all){const k=exKey(r.exercise),g=grp[k]||={raw:new Set(),users:new Set(),name:EX_ID[k]?.ru||r.name};g.raw.add(r.exercise);g.users.add(r.user_id)}
-    LB.exs=Object.entries(grp).sort((a,b)=>b[1].users.size-a[1].users.size).slice(0,12).map(([k,v])=>({k,name:v.name,n:v.users.size,raw:[...v.raw]}));
-    if(!LB.exs.some(x=>x.k===LB.ex))LB.ex=LB.exs[0]?.k||null;
+    // every exercise anyone has published, page by page (the server returns at most 1000 rows per request)
+    const all=[],grp={};
+    for(let i=0;i<20000;i+=1000){const p=await sbq(sb.from('lifts').select('user_id,exercise,name,e1rm').order('user_id').order('exercise').range(i,i+999));all.push(...p);if(p.length<1000)break}
+    for(const r of all){const k=exKey(r.exercise),g=grp[k]||={raw:new Set(),best:{},name:EX_ID[k]?.ru||r.name};g.raw.add(r.exercise);g.best[r.user_id]=Math.max(g.best[r.user_id]||0,+r.e1rm)}
+    LB.exs=Object.entries(grp).map(([k,v])=>{const b=Object.values(v.best),my=v.best[sbUser.id];
+      return {k,name:v.name,n:b.length,raw:[...v.raw],rank:my?b.filter(x=>x>my).length+1:0}}).sort((a,b)=>b.n-a.n||a.name.localeCompare(b.name));
+    if(!LB.exs.some(x=>x.k===LB.ex))LB.ex=LB.exs.find(x=>x.rank)?.k||LB.exs[0]?.k||null;
     const raw=LB.exs.find(x=>x.k===LB.ex)?.raw||[];
     const rows=raw.length?await sbq(sb.from('lifts').select('user_id,e1rm,weight,reps,bodyweight,achieved_on,profiles!inner(username,public)').in('exercise',raw).eq('profiles.public',true).order('e1rm',{ascending:false}).limit(200)):[];
     const seen=new Set();LB.rows=rows.filter(r=>!seen.has(r.user_id)&&seen.add(r.user_id)); // one row per user: their best
@@ -649,7 +670,26 @@ async function lbLoad(force){
   lbBusy=false;
   const c=$('#lb');if(c){c.outerHTML=lbCard();const n=$('#lb');n.classList.add('enter');setTimeout(()=>n.classList.remove('enter'),1300)}
 }
-function lbPick(k){LB.ex=k;lbLoad(true)}
+function lbPick(k){LB.ex=S.ui.lbEx=k;localSave();lbx.close();lbLoad(true)}
+// exercise picker: search over every exercise on the leaderboard, yours first
+let lbQ='';
+const lbNorm=s=>s.toLowerCase().replace(/ё/g,'е');
+function lbOpen(){lbQ='';lbx.innerHTML=`<h2>${tx('Упражнение')}<span class="sp"></span><button class="x" onclick="lbx.close()" aria-label="${tx('Закрыть')}">×</button></h2>
+  <div class="lbs"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="lbxQ" placeholder="${tx('Найти упражнение')}" autocomplete="off" enterkeyhint="search" oninput="lbQ=this.value;lbList()" onkeydown="if(event.key==='Enter'){const b=$('#lbxL button');b&&b.click()}"></div>
+  <div class="lbxl" id="lbxL"></div>`;lbList();lbx.showModal();
+  if(matchMedia('(pointer:fine)').matches)$('#lbxQ').focus();else $('#lbxQ').blur()}
+function lbList(){
+  const q=lbNorm(lbQ).split(/\s+/).filter(Boolean),lab=x=>exLabel(x.name);
+  const hit=x=>{const h=lbNorm(lab(x)+' '+x.name+' '+(EX_ID[x.k]?.en||''));return q.every(w=>h.includes(w))};
+  const mark=s=>{const i=q.length?lbNorm(s).indexOf(q[0]):-1;return i<0?esc(s):esc(s.slice(0,i))+'<mark>'+esc(s.slice(i,i+q[0].length))+'</mark>'+esc(s.slice(i+q[0].length))};
+  const row=x=>`<button class="${x.k===LB.ex?'on':''}" onclick="lbPick('${esc(x.k)}')"><span class="t">${mark(lab(x))}</span>${x.rank?`<span class="rk2">#${x.rank}</span>`:''}<span class="n"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>${x.n}</span></button>`;
+  const sec=(h,a)=>a.length?`<div class="h">${h}<span>${a.length}</span></div>${a.map(row).join('')}`:'';
+  let html;
+  if(q.length){const a=LB.exs.filter(hit),st=x=>lbNorm(lab(x)).startsWith(q[0])?0:1;a.sort((x,y)=>st(x)-st(y)||!!y.rank-!!x.rank||y.n-x.n);
+    html=a.length?sec(tx('Найдено'),a):`<p class="m">${tx('Ничего не найдено')}</p>`}
+  else html=sec(tx('Мои'),LB.exs.filter(x=>x.rank))+sec(tx('Все упражнения'),LB.exs.filter(x=>!x.rank));
+  $('#lbxL').innerHTML=html;
+}
 const lbRedraw=()=>{const c=$('#lb');if(c)c.outerHTML=lbCard()};
 function lbMode(m){LB.mode=m;LB.all=false;lbRedraw()}
 function lbAll(){LB.all=!LB.all;lbRedraw()}
@@ -665,7 +705,7 @@ function lbCard(){
   const me=list.findIndex(r=>r.id===sbUser.id),shown=LB.all?list:list.slice(0,N);
   const row=(r,i)=>`<li class="${r.id===sbUser.id?'me':''}"><span class="rk ${i<3?'r'+(i+1):''}">${i+1}</span><span class="nm">${esc(r.name)}</span><b>${wk?fmt(r.v)+`<small> ${tx('кг')}</small>`:rel?r.v.toFixed(2)+'<small> ×</small>':r1(r.v)+`<small> ${tx('кг')}</small>`}</b></li>`;
   return `<div class="card" id="lb"><h2>🏆 ${tx('Лидеры')}</h2>
-    <div class="lbbar">${!wk&&LB.exs.length?`<select onchange="lbPick(this.value)" aria-label="${tx('Упражнение')}">${LB.exs.map(x=>`<option value="${esc(x.k)}" ${x.k===LB.ex?'selected':''}>${esc(exLabel(x.name))}</option>`).join('')}</select>`:''}
+    <div class="lbbar">${!wk&&LB.exs.length?(x=>`<button class="lbpick" onclick="lbOpen()" aria-label="${tx('Упражнение')}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="t">${esc(exLabel(x?.name||''))}</span><span class="n">${tx('Все {0}',LB.exs.length)}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>`)(LB.exs.find(x=>x.k===LB.ex)):''}
       <div class="seg mini">${[['abs','1ПМ'],['rel','÷ вес'],['week','Неделя']].map(([k,n])=>`<button class="${LB.mode===k?'on':''}" onclick="lbMode('${k}')">${tx(n)}</button>`).join('')}</div></div>
     ${list.length?`<ol class="lb">${shown.map(row).join('')}${!LB.all&&me>=N?`<li class="gap">⋯</li>${row(list[me],me)}`:''}</ol>
       ${list.length>N?`<button class="lbmore" onclick="lbAll()">${LB.all?tx('Свернуть'):tx('Все {0}',list.length)}</button>`:''}`
