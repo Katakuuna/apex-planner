@@ -36,7 +36,7 @@ create policy "user_state: own only" on public.user_state
 -- Best set per exercise, for the leaderboard
 create table if not exists public.lifts (
   user_id     uuid not null references public.profiles(id) on delete cascade,
-  exercise    text not null check (char_length(exercise) <= 80),  -- normalized (lowercase) name
+  exercise    text not null check (char_length(exercise) <= 80),  -- exercise key from exercises.js ('bench_press'); older app versions: lowercase name
   name        text not null check (char_length(name) <= 80),      -- name as typed
   e1rm        numeric not null check (e1rm > 0 and e1rm < 1000),
   weight      numeric check (weight >= 0 and weight < 1000),
