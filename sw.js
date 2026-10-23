@@ -1,7 +1,7 @@
 // Offline support: stale-while-revalidate. The cached copy is served at once (instant launch, works offline)
 // and refreshed from the network in the background, so updates show on the next launch.
-const CACHE = 'apex-v5';
-const FILES = ['./', './index.html', './studies.js', './foods.js', './exercises.js', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
+const CACHE = 'apex-v6';
+const FILES = ['./', './index.html', './studies.js', './i18n.js', './foods.js', './exercises.js', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => e.waitUntil(
@@ -17,7 +17,7 @@ self.addEventListener('fetch', e => {
   }));
 });
 
-// Rest timer: the page posts {type:'rest', end} (end 0 cancels). Keep the worker alive until then and
+// Rest timer: the page posts {type:'rest', end, title, body} (end 0 cancels; title and body are in the app's language). Keep the worker alive until then and
 // notify only if no window is visible; a visible page beeps on its own. Platforms that suspend
 // background workers (iOS) may not deliver this.
 let restGen = 0;
@@ -30,7 +30,7 @@ self.addEventListener('message', e => {
     if (gen !== restGen) return;
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     if (wins.some(w => w.visibilityState === 'visible')) return;
-    return self.registration.showNotification('Отдых окончен', { body: 'Пора на следующий подход', tag: 'rest', renotify: true, vibrate: [200, 100, 200], icon: 'icon-192.png' });
+    return self.registration.showNotification(d.title || 'Отдых окончен', { body: d.body || 'Пора на следующий подход', tag: 'rest', renotify: true, vibrate: [200, 100, 200], icon: 'icon-192.png' });
   }));
 });
 self.addEventListener('notificationclick', e => {
