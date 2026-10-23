@@ -634,11 +634,15 @@ async function lbLoad(force){
   if(!sbUser||lbBusy||(!force&&Date.now()-lbAt<30000))return;
   lbBusy=true;
   try{
-    const all=await sbq(sb.from('lifts').select('exercise,name').limit(2000));
-    const cnt={};all.forEach(r=>{(cnt[r.exercise]||={n:0,name:r.name}).n++});
-    LB.exs=Object.entries(cnt).sort((a,b)=>b[1].n-a[1].n).slice(0,12).map(([k,v])=>({k,name:v.name,n:v.n}));
+    // users on an older version still publish under the lowercased name («жим лёжа»), newer ones under the
+    // exercise key ('bench_press'): group both by exKey so everyone doing one exercise lands in one list
+    const all=await sbq(sb.from('lifts').select('user_id,exercise,name').limit(2000)),grp={};
+    for(const r of all){const k=exKey(r.exercise),g=grp[k]||={raw:new Set(),users:new Set(),name:EX_ID[k]?.ru||r.name};g.raw.add(r.exercise);g.users.add(r.user_id)}
+    LB.exs=Object.entries(grp).sort((a,b)=>b[1].users.size-a[1].users.size).slice(0,12).map(([k,v])=>({k,name:v.name,n:v.users.size,raw:[...v.raw]}));
     if(!LB.exs.some(x=>x.k===LB.ex))LB.ex=LB.exs[0]?.k||null;
-    LB.rows=LB.ex?await sbq(sb.from('lifts').select('user_id,e1rm,weight,reps,bodyweight,achieved_on,profiles!inner(username,public)').eq('exercise',LB.ex).eq('profiles.public',true).order('e1rm',{ascending:false}).limit(50)):[];
+    const raw=LB.exs.find(x=>x.k===LB.ex)?.raw||[];
+    const rows=raw.length?await sbq(sb.from('lifts').select('user_id,e1rm,weight,reps,bodyweight,achieved_on,profiles!inner(username,public)').in('exercise',raw).eq('profiles.public',true).order('e1rm',{ascending:false}).limit(200)):[];
+    const seen=new Set();LB.rows=rows.filter(r=>!seen.has(r.user_id)&&seen.add(r.user_id)); // one row per user: their best
     LB.week=await sbq(sb.from('profiles').select('id,username,week_volume').eq('public',true).eq('week_start',weekDays(today())[0]).gt('week_volume',0).order('week_volume',{ascending:false}).limit(20));
     lbAt=Date.now();
   }catch(e){LB.err=e.message}
