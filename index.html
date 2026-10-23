@@ -219,6 +219,7 @@ main.soft{animation:fadeBg .25s ease}
 .seg.mini button{font-size:12px;padding:5px 10px}
 .pday{padding:12px;border-radius:14px;background:#ffffff06;box-shadow:inset 0 0 0 .5px var(--hair-soft);margin-bottom:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.exv{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.exg{align-items:flex-start}.exg .gsel{max-width:42%}
 .chips .chip{display:inline-flex;align-items:center;gap:2px;padding:4px 4px 4px 10px;font-size:13px}.chips .x{font-size:16px;padding:0 4px}
 .cue{padding:10px 12px;border-radius:12px;background:#9b1b301f;font-size:13px;line-height:1.45;margin-bottom:10px;color:#ecd3d8}
 .cue .lbl{margin-right:6px;font-size:10.5px}
@@ -391,6 +392,7 @@ dialog h2{margin-bottom:16px}
 </dialog>
 
 <script src="foods.js"></script>
+<script src="exercises.js"></script>
 <script>
 // ---------- utils ----------
 const $=s=>document.querySelector(s);
@@ -413,10 +415,18 @@ const low=s=>s.trim().toLowerCase();
 // ---------- state ----------
 const KEY='apex.v1';
 const DEF={settings:{kcal:2700,p:180,f:70,c:250,maint:2500,water:3000,goalWeight:82,rest:120,reps:'6-8'},
-  goals:[],body:{},program:null,progDay:{},exGroups:{},tasks:{},notes:{},habits:[],habitLog:{},workouts:{},food:{},foods:{},water:{},weight:{},ui:{}};
+  goals:[],body:{},program:null,progDay:{},exGroups:{},exAlias:{},tasks:{},notes:{},habits:[],habitLog:{},workouts:{},food:{},foods:{},water:{},weight:{},ui:{}};
 function norm(d){const s={...structuredClone(DEF),...d};s.settings={...DEF.settings,...d.settings};s.ui||={};return s}
 function load(){let d={};try{d=JSON.parse(localStorage.getItem(KEY))||{}}catch{}return norm(d)}
 let S=load(),tab=S.ui.tab||'home',day=today();
+// exercise groups used to be keyed by the lowercased name; re-key them by exercise key (exercises.js), once, after a backup
+function exMigrate(){
+  const G=S.exGroups||{},old=Object.keys(G).filter(k=>!EX_ID[k]&&!/^[xn]:/.test(k));if(!old.length)return false;
+  try{if(!localStorage.getItem('apex.backup.exkeys'))localStorage.setItem('apex.backup.exkeys',JSON.stringify(S))}catch{}
+  for(const k of old){const nk=exKey(k);if(!(nk in G))G[nk]=G[k];delete G[k]}
+  return true;
+}
+if(exMigrate())try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}
 let saveT=0;
 function localSave(){clearTimeout(saveT);saveT=0;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){if(!cloud)toast('Не удалось сохранить на устройстве: '+e.message+'. Сделайте экспорт в настройках.')}}
 // rapid edits (each keystroke, each set tick) coalesce into one write; flushed when the page is hidden or closed
@@ -442,8 +452,8 @@ function shards(s){
 }
 function applyShard(id,v){
   const [k,m]=id.split('~');if(!(k in DEF)||k==='ui')return;
-  if(k==='workouts')HX=null;
-  if(!m){S[k]=k==='settings'?{...DEF.settings,...v}:v;return}
+  if(k==='workouts'||k==='exAlias')HX=null;
+  if(!m){S[k]=k==='settings'?{...DEF.settings,...v}:v;if(k==='exGroups')exMigrate();return}
   for(const d of Object.keys(S[k]))if(d.startsWith(m))delete S[k][d];
   Object.assign(S[k],v||{});
 }
@@ -515,7 +525,7 @@ function sbInit(){
 }
 function mergeShard(id,v){ // first login on a device: keep local entries, cloud wins on the same date/id
   const [k,m]=id.split('~');if(!(k in DEF)||k==='ui')return;
-  if(k==='workouts')HX=null;
+  if(k==='workouts'||k==='exAlias')HX=null;
   if(m||k==='foods'){S[k]={...S[k],...v};return}
   if(k==='settings'){S.settings={...S.settings,...v};return}
   if(Array.isArray(v)){const ids=new Set(v.map(x=>x.id));S[k]=[...v,...(S[k]||[]).filter(x=>!ids.has(x.id))];return}
@@ -602,13 +612,16 @@ async function publishLifts(){
   if(!sbUser||!profile)return;
   const best={};
   for(const [d,a] of Object.entries(S.workouts))for(const e of a)for(const st of working(e.sets)){
-    const k=low(e.name),v=e1(st);if(!best[k]||v>best[k].e1rm)best[k]={exercise:k,name:e.name.trim(),e1rm:r1(v),weight:num(st.w),reps:num(st.r),achieved_on:d};
+    const k=exKey(e.name),v=e1(st);if(!best[k]||v>best[k].e1rm)best[k]={exercise:k,name:canonEx(k).slice(0,80),e1rm:r1(v),weight:num(st.w),reps:num(st.r),achieved_on:d};
   }
   const bw=lastWeight()?.kg??null,rows=Object.values(best).map(r=>({...r,user_id:sbUser.id,bodyweight:bw})),wk0=weekDays(today())[0];
   const prof={bodyweight:bw,week_start:wk0,week_volume:Math.round(sum(weekDays(today()).map(dayVolume)))};
   const sig=canon({rows,prof});if(sig===S.ui.pubSig)return;
   try{
     if(rows.length)await sbq(sb.from('lifts').upsert(rows,{onConflict:'user_id,exercise'}));
+    // rows under old names (before exercises were merged) would show the same lift twice
+    const stale=(await sbq(sb.from('lifts').select('exercise').eq('user_id',sbUser.id))).map(r=>r.exercise).filter(x=>!best[x]);
+    if(stale.length)await sbq(sb.from('lifts').delete().eq('user_id',sbUser.id).in('exercise',stale));
     await sbq(sb.from('profiles').update(prof).eq('id',sbUser.id));
     S.ui.pubSig=sig;localSave();lbAt=0;
   }catch(e){console.warn('leaderboard publish failed',e)}
@@ -842,16 +855,20 @@ const isWork=s=>s.done&&!s.warm; // counts toward weekly working sets (bodyweigh
 // previous session's matching set of the same kind: warm-ups pair with warm-ups, working sets with working sets
 function prevSet(e,i,p){const s=e.sets[i],k=e.sets.slice(0,i).filter(x=>!!x.warm===!!s.warm).length;return p?.sets.filter(x=>!!x.warm===!!s.warm)[k]}
 const dayVolume=d=>sum((S.workouts[d]||[]).flatMap(e=>working(e.sets)).map(s=>num(s.w)*num(s.r)));
-const allEx=()=>[...new Set([...Object.values(S.workouts).flat().map(e=>e.name),...DEFAULT_EX])];
-// per-exercise history index: low(name) -> [{d,e}] by date, then by order within the day.
+// one suggestion per exercise (merged names collapse into one), most recently used first
+const allEx=()=>{const m=new Map();for(const d of Object.keys(S.workouts).sort().reverse())for(const e of S.workouts[d]){const k=exKey(e.name);if(!m.has(k))m.set(k,canonEx(k))}
+  for(const n of DEFAULT_EX)if(!m.has(exKey(n)))m.set(exKey(n),n);return [...m.values()]};
+// per-exercise history index: exKey(name) -> [{d,e}] by date, then by order within the day.
 // Holds the exercise objects themselves, so set edits show up without a rebuild; any full render() or synced
 // workouts shard drops it and the next lookup rebuilds it.
 let HX=null,HXw=null;
 function hx(name){
   if(!HX||HXw!==S.workouts){HX=new Map();HXw=S.workouts;
-    for(const d of Object.keys(S.workouts).sort())for(const e of S.workouts[d]){const k=low(e.name);HX.has(k)?HX.get(k).push({d,e}):HX.set(k,[{d,e}])}}
-  return HX.get(low(name))||[];
+    for(const d of Object.keys(S.workouts).sort())for(const e of S.workouts[d]){const k=exKey(e.name);HX.has(k)?HX.get(k).push({d,e}):HX.set(k,[{d,e}])}}
+  return HX.get(exKey(name))||[];
 }
+// display name of an exercise: the catalog name, else the name it was last logged under
+function canonEx(name){const k=exKey(name);return EX_ID[k]?.ru||hx(k).at(-1)?.e.name||name}
 // latest date before d with an entry passing f; within that date the first match wins
 function hxLast(name,d,f){
   const a=hx(name);let r=null;
@@ -908,9 +925,8 @@ function useTarget(id){const e=exOf(id),t=nextTarget(e.name,day);if(!t)return;
   for(let n=e.sets.filter(s=>!s.warm).length;n<t.sets;n++)e.sets.push({w:'',r:'',done:false,warm:false});
   for(const s of e.sets)if(!s.warm&&!s.done){if(s.w===''&&t.w)s.w=String(t.w);if(s.r==='')s.r=String(t.r)}commitEx(id)}
 function exHistory(name){
-  const k=low(name);
-  return Object.keys(S.workouts).sort().map(d=>{const sets=S.workouts[d].filter(e=>low(e.name)===k).flatMap(e=>working(e.sets));
-    return sets.length&&{d,e1:Math.max(...sets.map(e1)),vol:sum(sets.map(s=>num(s.w)*num(s.r)))}}).filter(Boolean);
+  const by=new Map();for(const {d,e} of hx(name)){const ws=working(e.sets);if(ws.length)by.has(d)?by.get(d).push(...ws):by.set(d,ws)}
+  return [...by].map(([d,sets])=>({d,e1:Math.max(...sets.map(e1)),vol:sum(sets.map(s=>num(s.w)*num(s.r)))}));
 }
 function addEx(){
   const n=$('#exName').value.trim();if(!n)return;
@@ -1168,10 +1184,11 @@ gym(){
   ${cards}
 
   ${lbCard()}
-  ${recentCard()}`;
+  ${recentCard()}
+  ${exManageCard()}`;
 },
 body(){
-  const w=lastWeight(),fw=weights()[0],names=liftNames(),ex=names.includes(S.ui.ex)?S.ui.ex:names[0],full=ex?exHistory(ex):[],hist=full.slice(-30);
+  const w=lastWeight(),fw=weights()[0],names=liftKeys(),ex=names.find(k=>k===exKey(S.ui.ex||''))||names[0],full=ex?exHistory(ex):[],hist=full.slice(-30);
   const mk=MEAS.some(m=>m.k===S.ui.mk)?S.ui.mk:'biceps',m=MEAS.find(x=>x.k===mk),mh=measHist(mk);
   const tag=(m,cur,first,unit)=>{const d=cur!=null&&first!=null?r1(cur-first):null,j=d!=null?judge(m.k):null;
     return `<button class="mtag ${m.side} ${j||''}" style="top:${m.y/5}%;${m.side==='l'?'left:1%':'left:77%'}" onclick="openMeas('${m.k}')"><span class="mn">${m.n}</span><b>${cur??'—'}${cur!=null?`<small> ${unit}</small>`:''}</b>${d?`<i class="${JC[j]}">${d>0?'+':''}${d} ${unit}</i>`:''}</button>`};
@@ -1189,7 +1206,7 @@ body(){
   <div class="card"><h2>Прогресс всех замеров</h2>${ov.length?`<div class="ov">${ov.map(o=>`<span>${o.m.n}</span><span class="tr"><i class="${o.j}" style="${o.pc>=0?'left:50%':'right:50%'};width:${Math.abs(o.pc)/mx*50}%;transform-origin:${o.pc>=0?'left':'right'}"></i></span><span class="${JC[o.j]}">${o.b-o.a>0?'+':''}${r1(o.b-o.a)} см · ${o.pc>0?'+':''}${r1(o.pc)}%</span>`).join('')}</div>`:'<p class="empty">Нужно 2 замера.</p>'}</div>
 ${weightCard()}
   <div class="card hot" id="ex"><h2>Силовые показатели</h2>
-    ${names.length?`<div class="seg">${names.map(n=>`<button class="${n===ex?'on':''}" onclick="pick('ex',this.textContent)">${esc(n)}</button>`).join('')}</div>
+    ${names.length?`<div class="seg">${names.map(k=>`<button class="${k===ex?'on':''}" onclick="pick('ex','${esc(k)}')">${esc(canonEx(k))}</button>`).join('')}</div>
     <div class="row" style="margin-bottom:8px"><div><div class="lbl">Расчётный 1ПМ</div><div class="big">${r1(hist.at(-1).e1)} <small>кг</small></div>${hist.length>1?`<div class="sm ${hist.at(-1).e1>=hist[0].e1?'up':'down'}">${hist.at(-1).e1>=hist[0].e1?'+':''}${r1(hist.at(-1).e1-hist[0].e1)} кг с ${fmtDay(hist[0].d,{day:'numeric',month:'short'})}</div>`:''}</div>
     <div><div class="lbl">Рекорд</div><div class="big">${r1(Math.max(...hist.map(h=>h.e1)))} <small>кг</small></div></div></div>
     ${line(full.map(h=>({d:h.d,v:r1(h.e1)})),{unit:' кг',key:'ex',id:'e1'})}
@@ -1258,7 +1275,7 @@ function judge(k){
   return (w?pc<w.pc:pc<-3)?'b':'n';
 }
 function liftTrend(since){
-  const r=liftNames().map(n=>{const h=exHistory(n).filter(x=>x.d>=since);return h.length>=2?(h.at(-1).e1/h[0].e1-1)*100:null}).filter(v=>v!=null);
+  const r=liftKeys().map(n=>{const h=exHistory(n).filter(x=>x.d>=since);return h.length>=2?(h.at(-1).e1/h[0].e1-1)*100:null}).filter(v=>v!=null);
   return r.length?{pc:sum(r)/r.length,n:r.length}:null;
 }
 // cut check: rate of loss, waist vs muscle girths, strength — strength is the best tell for keeping muscle
@@ -1277,7 +1294,7 @@ function cutCard(){
     <div class="list">${rows.map(([v,t,d])=>`<div class="item"><span class="vd ${v}"></span><div class="t">${t}</div><span class="sm mut fit">${d}</span></div>`).join('')}</div>
     ${bad?'<p class="sm mut" style="margin-top:12px">Белок 1.6–2.2 г/кг · до 1% веса в неделю · тяжёлая база · сон 7–9 ч</p>':''}</div>`;
 }
-const liftNames=()=>[...new Set(Object.values(S.workouts).flat().filter(e=>working(e.sets).length).map(e=>e.name))];
+const liftKeys=()=>[...new Set(Object.values(S.workouts).flat().filter(e=>working(e.sets).length).map(e=>exKey(e.name)))];
 function pick(key,v){S.ui[key]=v;save();render();const c=document.getElementById(key);if(!c)return;c.classList.remove('enter');void c.offsetWidth;c.classList.add('enter');setTimeout(()=>c.classList.remove('enter'),1300)}
 function openMeas(k){
   const all=[WM,...MEAS],today_=S.body[day]||{};
@@ -1496,16 +1513,16 @@ function progFor(d){
 }
 // comment for an exercise: today's program day first, then any day of the program
 function progNote(name){
-  const k=low(name),days=[progFor(day),...(S.program?.days||[])].filter(Boolean);
-  for(const d of days){const e=exs(d).find(x=>low(x.n)===k&&x.c);if(e)return e.c}
+  const k=exKey(name),days=[progFor(day),...(S.program?.days||[])].filter(Boolean);
+  for(const d of days){const e=exs(d).find(x=>x.c&&exKey(x.n)===k);if(e)return e.c}
   return '';
 }
 function prevNote(name,d){const x=hxLast(name,d,e=>e.note);return x&&{d:x.d,t:x.e.note}}
 function progAttach(v){S.progDay[day]=v;commit()}
 function progAdd(names){
-  const have=new Set(wk(day).map(e=>low(e.name)));
+  const have=new Set(wk(day).map(e=>exKey(e.name)));
   // only the exercise name: no planned sets/reps, one empty row to start logging
-  names.filter(n=>!have.has(low(n))).forEach(n=>wk(day).push({id:uid(),name:n,sets:[{w:'',r:'',done:false,warm:false}]}));
+  names.filter(n=>!have.has(exKey(n))).forEach(n=>wk(day).push({id:uid(),name:n,sets:[{w:'',r:'',done:false,warm:false}]}));
   commit();
 }
 // long comments read better as short points: split on sentence ends, «;» and line breaks
@@ -1534,11 +1551,11 @@ function progCard(){
   if(!P?.days?.length)return `<div class="card" id="prog"><h2>📋 Моя программа</h2>
     <p class="sm mut" style="margin-bottom:12px">Excel, PDF, Word или текст.</p>
     <div class="row"><button class="btn-a" onclick="progFile.click()">Загрузить файл</button><button onclick="progPaste()">Вставить текст</button></div></div>`;
-  const d=progFor(day),list=d?exs(d):[],have=new Set(wk(day).map(e=>low(e.name))),miss=list.filter(e=>!have.has(low(e.n))),sel=d?d.id:'none';
+  const d=progFor(day),list=d?exs(d):[],have=new Set(wk(day).map(e=>exKey(e.name))),miss=list.filter(e=>!have.has(exKey(e.n))),sel=d?d.id:'none';
   return `<div class="card hot" id="prog"><h2>📋 ${esc(P.name)}<span class="sp"></span><button class="ico" onclick="progEdit()">Изменить</button></h2>
     <div class="row" style="margin-bottom:12px">
       <select onchange="progAttach(this.value)" aria-label="День программы на эту дату"><option value="none" ${sel==='none'?'selected':''}>Без программы</option>${P.days.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${esc(x.name)}${x.wd!=null?' · '+WDN.find(w=>w[0]===x.wd)[1]:''}</option>`).join('')}</select></div>
-    ${d?`<div class="list">${list.map(e=>{const added=have.has(low(e.n));
+    ${d?`<div class="list">${list.map(e=>{const added=have.has(exKey(e.n));
         return `<div class="item ${added?'done':''}" ${added?'':`onclick='progAdd([${esc(JSON.stringify(e.n))}])' style="cursor:pointer"`}><div class="t">${esc(e.n)}</div><span class="sm ${added?'up':'mut'} fit">${added?'✓':'+'}</span></div>`}).join('')}</div>
       ${miss.length?`<button class="btn-a" style="width:100%;margin-top:12px" onclick="progAdd(exs(progFor(day)).map(e=>e.n))">Начать тренировку: ${miss.length} упр.</button>`:'<p class="sm up" style="margin-top:10px">✓ Всё добавлено</p>'}`
       :'<p class="empty">Сегодня без программы.</p>'}
@@ -1563,13 +1580,15 @@ const GUESS=[
   [/жим|груд|сведени|бабочк|пек|отжиман|брус|кроссовер|bench|press|fly|chest|dip|push/i,'Грудь'],
 ];
 function groupOf(name){
-  const k=low(name);if(S.exGroups[k])return S.exGroups[k];
-  for(const d of S.program?.days||[]){const e=exs(d).find(x=>low(x.n)===k&&x.g);if(e)return normG(e.g)}
+  const k=exKey(name);if(S.exGroups[k])return S.exGroups[k];
+  for(const d of S.program?.days||[]){const e=exs(d).find(x=>x.g&&exKey(x.n)===k);if(e)return normG(e.g)}
+  if(EX_ID[k])return EX_ID[k].g;
+  if(/^[xn]:/.test(name))name=canonEx(name);
   for(const [re,g] of GUESS)if(re.test(name))return g;
   return 'Другое';
 }
 const groupList=()=>[...new Set([...GROUPS,...(S.program?.days||[]).flatMap(d=>exs(d).map(e=>e.g&&normG(e.g))).filter(Boolean),...Object.values(S.exGroups),'Другое'])];
-function setGroup(id,g){S.exGroups[low(exOf(id).name)]=g;commit()}
+function setGroup(id,g){S.exGroups[exKey(exOf(id).name)]=g;commit()}
 const isCardio=name=>groupOf(name)==='Кардио';
 const dayCardio=d=>sum((S.workouts[d]||[]).filter(e=>isCardio(e.name)).flatMap(e=>e.sets.filter(isWork)).map(s=>num(s.t)));
 // cardio is counted in minutes; 150–300 min/week of moderate activity is the WHO guideline
@@ -1604,6 +1623,58 @@ function weekGroupsCard(){
       const [lo,hi]=targetOf(g),mx=Math.max(hi*1.25,n),st=n<lo?'lo':n>hi?'hi':'ok';
       return `<span class="gn">${g}</span><span class="tr"><span class="zone" style="left:${lo/mx*100}%;width:${(hi-lo)/mx*100}%"></span><i class="${st}" style="width:${n/mx*100}%"></i></span><span class="gv ${st}"><b>${r1(n)}</b> / ${lo}–${hi}${g==='Кардио'?' мин':''}</span>`}).join('')}</div>
     <p class="sm mut" style="margin-top:12px">Всего ${sum(Object.entries(cnt).filter(([g])=>g!=='Кардио').map(([,v])=>v))} · зелёная зона — норма</p></div>`;
+}
+
+// ---------- one exercise, many names: review, merge and split ----------
+// Merging links one exercise key to another in S.exAlias (synced), so history, records, targets and groups join;
+// splitting gives a name its own key. Workouts keep the names as typed, so either is undone without loss.
+function exGroupsList(){
+  const m=new Map(),add=(n,d)=>{const k=exKey(n),g=m.get(k)||m.set(k,{k,names:new Map(),n:0,last:''}).get(k),t=n.trim();
+    g.names.set(t,(g.names.get(t)||0)+(d?1:0));if(d){g.n++;if(d>g.last)g.last=d}};
+  for(const [d,a] of Object.entries(S.workouts))for(const e of a)add(e.name,d);
+  for(const d of S.program?.days||[])for(const e of exs(d))add(e.n,'');
+  // the same spelling with other case/ё is one name
+  for(const g of m.values()){const seen=new Map();for(const [n,c] of g.names){const x=exNorm(n);seen.has(x)?seen.get(x)[1]+=c:seen.set(x,[n,c])}g.names=new Map(seen.values())}
+  return [...m.values()].sort((a,b)=>b.n-a.n||(a.last<b.last?1:-1));
+}
+const exTokM=new Map(),exToks=n=>exTokM.get(n)||exTokM.set(n,new Set(exSig(exNorm(n)).split(' '))).get(n);
+// likely the same exercise: same muscle group, and one name has exactly one extra word («жим» / «жим лёжа»)
+function exSimilar(gs){
+  const no=new Set(S.ui.exNo||[]),out=[];
+  for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){const a=gs[i],b=gs[j];
+    if(no.has(a.k+'|'+b.k)||groupOf(a.k)!==groupOf(b.k))continue;
+    const hit=[...a.names.keys()].some(x=>[...b.names.keys()].some(y=>{const A=exToks(x),B=exToks(y),[s,l]=A.size<B.size?[A,B]:[B,A];
+      return l.size-s.size===1&&[...s].every(t=>l.has(t))}));
+    if(hit)out.push([a,b]);if(out.length>=5)return out}
+  return out;
+}
+async function exMerge(from,to){
+  from=exKey(from);to=exKey(to);if(from===to)return;
+  if(!await ask(`Объединить «${canonEx(from)}» с «${canonEx(to)}»? История, рекорды и цели станут общими. Разделить можно в любой момент.`))return render();
+  S.exAlias[from]=to;if(!S.exGroups[to]&&S.exGroups[from])S.exGroups[to]=S.exGroups[from];
+  commit();toast('Упражнения объединены');
+}
+// take one name out of its exercise: undo the merge it came through, else give the name its own key
+function exSplit(name){
+  const n=exNorm(name),A=S.exAlias,k=exKey(name);let c=A[n]||exAutoKey(n),prev=null;
+  for(let i=0;i<8&&c!==k&&A[c];i++){prev=c;c=A[c]}
+  if(prev)delete A[prev];else A[n]=('n:'+n).slice(0,80);
+  commit();toast(`«${name}» — отдельное упражнение`);
+}
+function exUnsplit(k){const n=k.slice(2);delete S.exAlias[n];commit();toast('Вернул в общее упражнение')}
+function exDismiss(a,b){(S.ui.exNo||=[]).push(a+'|'+b);commit()}
+function exManageCard(){
+  const gs=exGroupsList();if(!gs.length)return '';
+  const sim=exSimilar(gs),many=gs.filter(g=>g.names.size>1).length,nm=k=>esc(canonEx(k));
+  return `<div class="card" id="exm"><details ${S.ui.exmOpen?'open':''} ontoggle="S.ui.exmOpen=this.open;save()"><summary>Упражнения и названия<span class="sm mut"> · ${gs.length}${sim.length?` · <b class="down">${sim.length} похожих</b>`:''}</span></summary>
+    <p class="sm mut" style="margin:8px 0 12px">Одно упражнение под разными названиями считается вместе: история, рекорды, цели. ${many?`Уже объединено автоматически: ${many}.`:''}</p>
+    ${sim.length?`<div class="lbl">Похоже на одно и то же</div><div class="list" style="margin-bottom:14px">${sim.map(([a,b])=>`<div class="item"><div class="t">${nm(a.k)} <span class="mut">и</span> ${nm(b.k)}</div>
+      <button class="fit" onclick="exMerge('${esc(b.k)}','${esc(a.k)}')">Объединить</button><button class="x fit" onclick="exDismiss('${esc(a.k)}','${esc(b.k)}')" aria-label="Это разные упражнения">×</button></div>`).join('')}</div>`:''}
+    <div class="list">${gs.map(g=>`<div class="item exg"><div class="t"><b>${nm(g.k)}</b> <span class="sm mut">${g.n?g.n+' трен.':'в программе'}</span>
+      ${g.names.size>1?`<div class="chips exv">${[...g.names].map(([n,c])=>`<span class="chip">${esc(n)}${c?`<span class="mut">&nbsp;· ${c}</span>`:''}<button class="x" onclick='exSplit(${esc(JSON.stringify(n))})' title="Отделить в отдельное упражнение" aria-label="Отделить">×</button></span>`).join('')}</div>`:''}
+      ${g.k.startsWith('n:')?`<button class="sm" style="margin-top:6px" onclick="exUnsplit('${esc(g.k)}')">Вернуть в «${esc(canonEx(exAutoKey(g.k.slice(2))))}»</button>`:''}</div>
+      <select class="fit gsel" onchange="this.value&&exMerge('${esc(g.k)}',this.value)" aria-label="Объединить с"><option value="">Объединить с…</option>${gs.filter(x=>x!==g).map(x=>`<option value="${esc(x.k)}">${nm(x.k)}</option>`).join('')}</select></div>`).join('')}</div>
+  </details></div>`;
 }
 
 // ---------- research popup ----------
