@@ -48,7 +48,7 @@ const EX_EN={
 const exK=n=>String(n||'').trim().toLowerCase().replace(/ё/g,'е');
 const EX_ENk=new Map(Object.entries(EX_EN).map(([r,e])=>[exK(r),e])),EX_RUk=new Map(Object.entries(EX_EN).reverse().map(([r,e])=>[exK(e),r])); // first Russian name wins for a shared English one
 // the exercise catalog (exercises.js), when present, is the source of names and aliases
-const exCat=n=>typeof EX_CAT!=='undefined'&&typeof exKey==='function'?EX_CAT.find(x=>x.id===exKey(n)):null;
+const exCat=n=>typeof EX_ID!=='undefined'&&typeof exKey==='function'?EX_ID[exKey(n)]:null;
 function exLabel(n){if(LANG!=='en')return n;return exCat(n)?.en||EX_ENk.get(exK(n))||n}
 function exCanon(n){if(!n)return n;const c=exCat(n);return c?.ru&&!/[а-яё]/i.test(n)?c.ru:EX_RUk.get(exK(n))||n}
 
@@ -158,4 +158,17 @@ const EN={
   'Бэкап сохранён':'Backup saved','Не удалось сохранить файл ({0})':'Could not save the file ({0})','файл не похож на бэкап Apex':'the file does not look like an Apex backup',
   'Заменить текущие данные данными из файла?':'Replace your current data with the data from this file?','Данные загружены':'Data loaded','Ошибка импорта: {0}':'Import error: {0}',
   'Стереть ВСЕ данные на всех устройствах? Это необратимо — сначала лучше сделать экспорт.':'Erase ALL data on all devices? This cannot be undone, so export a backup first.',
+  // charts
+  '3 мес':'3 mo','Всё':'All','Мин':'Min','Макс':'Max','Изменение':'Change','с {0}':'since {0}','{0} к {1}':'{0} vs {1}',
+  'Нажмите на график — покажу дату и значение':'Tap the chart to see the date and value','График: от {0} до {1} {2}':'Chart: from {0} to {1} {2}',
+  'За этот период меньше двух записей — выберите период длиннее.':'Fewer than two entries in this period. Pick a longer one.','До цели ≈ {0} нед':'Goal in ≈ {0} wk',
+  // comments as points
+  'ещё {0}':'{0} more','весь текст':'full text',
+  // exercise names and merging
+  'Объединить «{0}» с «{1}»? История, рекорды и цели станут общими. Разделить можно в любой момент.':'Merge “{0}” with “{1}”? History, records and targets will be shared. You can split them again at any time.',
+  'Упражнения объединены':'Exercises merged','«{0}» — отдельное упражнение':'“{0}” is now a separate exercise','Вернул в общее упражнение':'Moved back into the shared exercise',
+  'Упражнения и названия':'Exercises and names','{0} похожих':'{0} similar','Одно упражнение под разными названиями считается вместе: история, рекорды, цели.':'One exercise under different names is counted together: history, records, targets.',
+  'Уже объединено автоматически: {0}.':'Already merged automatically: {0}.','Похоже на одно и то же':'Looks like the same exercise','и':'and','Объединить':'Merge',
+  'Это разные упражнения':'These are different exercises','{0} трен.':'{0} workouts','в программе':'in program','Отделить в отдельное упражнение':'Split into a separate exercise',
+  'Отделить':'Split','Вернуть в «{0}»':'Move back into “{0}”','Объединить с':'Merge with','Объединить с…':'Merge with…',
 };

@@ -1,7 +1,7 @@
 // Offline support: stale-while-revalidate. The cached copy is served at once (instant launch, works offline)
 // and refreshed from the network in the background, so updates show on the next launch.
-const CACHE = 'apex-v5';
-const FILES = ['./', './index.html', './studies.js', './i18n.js', './foods.js', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
+const CACHE = 'apex-v6';
+const FILES = ['./', './index.html', './studies.js', './i18n.js', './foods.js', './exercises.js', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => e.waitUntil(

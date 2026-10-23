@@ -94,7 +94,14 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 .set .prev{font-size:13px;color:var(--mut)}
 .set input{padding:8px;text-align:center}
 .chart{width:100%;height:auto;display:block;overflow:visible}
-.axis{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-top:4px}
+.cbox{position:relative;touch-action:pan-y;cursor:crosshair;user-select:none;-webkit-user-select:none}
+.chart .grid line{stroke:#ffffff12;stroke-width:1}.chart .grid line.v{stroke:#ffffff0a}.chart .grid text{fill:var(--mut);font-size:17px;font-variant-numeric:tabular-nums}.chart .grid text.e{fill:#9b8f92aa;font-size:15px}
+.chart .dots circle{fill:#171214;stroke:#E0364F;stroke-width:1.6}
+.chart .cv{font-size:19px;font-weight:700;fill:var(--txt);paint-order:stroke;stroke:#171214;stroke-width:7px;stroke-linejoin:round;font-variant-numeric:tabular-nums}.chart .cv.min,.chart .cv.max{fill:var(--rose);font-weight:600}
+.chart .hv line{stroke:var(--txt);stroke-opacity:.45;stroke-width:1.2;stroke-dasharray:3 4}.chart .hv circle{fill:var(--acc2);stroke:#fff;stroke-width:3}
+.cst{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 10px;font-size:12px;color:var(--mut);line-height:1.3}.cst i{display:block;font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--rose)}.cst b{font-size:16px;color:var(--txt);font-variant-numeric:tabular-nums}.cst small{font-size:12px}
+.cread{min-height:20px;font-size:13px;margin-bottom:4px;font-variant-numeric:tabular-nums}.cread .mut{font-size:12px}
+.rg{margin:4px 0 10px}
 .nutri{display:flex;gap:24px;align-items:center;flex-wrap:wrap}.ring{width:170px;flex:0 0 auto;margin:auto;filter:drop-shadow(0 0 18px #9b1b3040)}
 .macros{flex:1 1 220px;display:flex;flex-direction:column;gap:12px}
 .fgrid{display:grid;grid-template-columns:2fr repeat(5,1fr);gap:8px}
@@ -212,6 +219,7 @@ main.soft{animation:fadeBg .25s ease}
 .seg.mini button{font-size:12px;padding:5px 10px}
 .pday{padding:12px;border-radius:14px;background:#ffffff06;box-shadow:inset 0 0 0 .5px var(--hair-soft);margin-bottom:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.exv{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.exg{align-items:flex-start}.exg .gsel{max-width:42%}
 .chips .chip{display:inline-flex;align-items:center;gap:2px;padding:4px 4px 4px 10px;font-size:13px}.chips .x{font-size:16px;padding:0 4px}
 .cue{padding:10px 12px;border-radius:12px;background:#9b1b301f;font-size:13px;line-height:1.45;margin-bottom:10px;color:#ecd3d8}
 .cue .lbl{margin-right:6px;font-size:10.5px}
@@ -271,6 +279,23 @@ button,input,select{min-height:40px}.chk,.x,.set .n,.set input,.seg button,.chip
 .sug{background:linear-gradient(90deg,#9b1b302e,#ffffff05);box-shadow:inset 0 0 0 .5px var(--hair-soft)}
 .cue{border-radius:12px}
 .empty{padding:10px 0;text-align:center}
+/* long text: comments and rules become short bullet points, collapsed to the first one */
+.pts{list-style:none;padding:0;display:flex;flex-direction:column;gap:5px}
+.pts li{position:relative;padding-left:14px}.pts li::before{content:"";position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--rose);opacity:.7}
+.cue{display:flex;flex-direction:column;gap:6px;padding:10px 12px 11px}
+.cue .ch{display:flex;align-items:center;gap:8px}.cue .ch .lbl{margin:0}.cue .more{margin-left:auto;font-size:11.5px;color:var(--rose);white-space:nowrap}
+.cue .cl{display:block}.cue:not(.open) .pts li:nth-child(n+2){display:none}
+.cue:not(.open) .pts li:first-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cue.open .more{visibility:hidden}
+.cue .pts li:only-child{padding-left:0}.cue .pts li:only-child::before{display:none}
+.sug{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center}
+.sug .lbl{margin:0}.sug b{white-space:nowrap}.sug .why{grid-column:1/-1;color:var(--mut);line-height:1.35}.sug button{grid-row:1;grid-column:3}
+.rules dl{gap:8px}.rules .rl{padding:10px 12px;border-radius:12px;background:#ffffff06;box-shadow:inset 0 0 0 .5px var(--hair-soft)}
+.rules dt{font-size:14px;margin-bottom:4px}.rules dd{margin:0}
+.stats{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}.stats .chip{font-size:12px;padding:3px 9px}
+.cmt:not(:focus){max-height:calc(2.8em + 9px);overflow:hidden}
+#sci .src-l{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+#sci .row>button:first-child{flex:0 0 auto}
 /* weekly bars: html, so labels keep their size at any width */
 .bars{display:grid;grid-template-columns:repeat(var(--n,7),1fr);gap:8px;height:150px;align-items:end}
 .bc{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;min-width:0}
@@ -279,7 +304,6 @@ button,input,select{min-height:40px}.chk,.x,.set .n,.set input,.seg button,.chip
 .bc.on .br{background:linear-gradient(var(--acc2),var(--acc));box-shadow:0 4px 18px #e0364f40}
 .bc .bv{font-size:11px;font-weight:600;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap;min-height:14px;line-height:14px}
 .bc .bl{font-size:11px;color:var(--mut);text-transform:capitalize}.bc.on .bl{color:var(--txt);font-weight:600}
-.axis{font-size:11px;margin-top:8px}
 .nutri{gap:20px}
 nav{bottom:calc(12px + env(safe-area-inset-bottom))}
 #sciBtn{width:40px;height:40px;font-size:18px;min-height:0}
@@ -322,11 +346,10 @@ dialog h2{margin-bottom:16px}
 
 <button id="sciBtn" title="Случайное исследование" onclick="sciToggle()" aria-label="Исследования">🔬</button>
 <div id="sci" hidden role="dialog" aria-label="Исследования о тренировках">
-  <div class="lbl" style="display:flex;gap:8px;align-items:center">Исследование дня<span style="flex:1"></span><span id="sciN" class="chip"></span></div>
+  <div class="lbl" style="display:flex;gap:8px;align-items:center">Исследование дня<span style="flex:1"></span><span id="sciN" class="chip"></span><button class="x" onclick="sciToggle(false)" aria-label="Закрыть">×</button></div>
   <p id="sciT"></p>
-  <div class="sm mut" id="sciS"></div>
-  <a id="sciL" target="_blank" rel="noopener" class="sm" style="color:var(--acc2);display:inline-block;margin-top:8px">Читать на PubMed ↗</a>
-  <div class="row" style="margin-top:12px"><button onclick="sciPrev()" aria-label="Предыдущее">‹</button><button onclick="sciNext()">Другое исследование</button><button class="fit" onclick="sciToggle(false)">Закрыть</button></div>
+  <div class="sm src-l"><span class="mut" id="sciS"></span><a id="sciL" target="_blank" rel="noopener" style="color:var(--acc2)">PubMed ↗</a></div>
+  <div class="row" style="margin-top:12px"><button onclick="sciPrev()" aria-label="Предыдущее">‹</button><button onclick="sciNext()">Другое исследование</button></div>
 </div>
 
 <dialog id="cal" aria-label="Календарь">
@@ -372,6 +395,7 @@ dialog h2{margin-bottom:16px}
 
 <script src="i18n.js"></script>
 <script src="foods.js"></script>
+<script src="exercises.js"></script>
 <script>
 // ---------- utils ----------
 const $=s=>document.querySelector(s);
@@ -394,10 +418,18 @@ const low=s=>s.trim().toLowerCase();
 // ---------- state ----------
 const KEY='apex.v1';
 const DEF={settings:{kcal:2700,p:180,f:70,c:250,maint:2500,water:3000,goalWeight:82,rest:120,reps:'6-8',lang:'ru'},
-  goals:[],body:{},program:null,progDay:{},exGroups:{},tasks:{},notes:{},habits:[],habitLog:{},workouts:{},food:{},foods:{},water:{},weight:{},ui:{}};
+  goals:[],body:{},program:null,progDay:{},exGroups:{},exAlias:{},tasks:{},notes:{},habits:[],habitLog:{},workouts:{},food:{},foods:{},water:{},weight:{},ui:{}};
 function norm(d){const s={...structuredClone(DEF),...d};s.settings={...DEF.settings,...d.settings};s.ui||={};return s}
 function load(){let d={};try{d=JSON.parse(localStorage.getItem(KEY))||{}}catch{}return norm(d)}
 let S=load(),tab=S.ui.tab||'home',day=today();
+// exercise groups used to be keyed by the lowercased name; re-key them by exercise key (exercises.js), once, after a backup
+function exMigrate(){
+  const G=S.exGroups||{},old=Object.keys(G).filter(k=>!EX_ID[k]&&!/^[xn]:/.test(k));if(!old.length)return false;
+  try{if(!localStorage.getItem('apex.backup.exkeys'))localStorage.setItem('apex.backup.exkeys',JSON.stringify(S))}catch{}
+  for(const k of old){const nk=exKey(k);if(!(nk in G))G[nk]=G[k];delete G[k]}
+  return true;
+}
+if(exMigrate())try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}
 let saveT=0;
 function localSave(){clearTimeout(saveT);saveT=0;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){if(!cloud)toast(tx('Не удалось сохранить на устройстве: {0}. Сделайте экспорт в настройках.',e.message))}}
 // rapid edits (each keystroke, each set tick) coalesce into one write; flushed when the page is hidden or closed
@@ -423,8 +455,8 @@ function shards(s){
 }
 function applyShard(id,v){
   const [k,m]=id.split('~');if(!(k in DEF)||k==='ui')return;
-  if(k==='workouts')HX=null;
-  if(!m){S[k]=k==='settings'?{...DEF.settings,...v}:v;return}
+  if(k==='workouts'||k==='exAlias')HX=null;
+  if(!m){S[k]=k==='settings'?{...DEF.settings,...v}:v;if(k==='exGroups')exMigrate();return}
   for(const d of Object.keys(S[k]))if(d.startsWith(m))delete S[k][d];
   Object.assign(S[k],v||{});
 }
@@ -496,7 +528,7 @@ function sbInit(){
 }
 function mergeShard(id,v){ // first login on a device: keep local entries, cloud wins on the same date/id
   const [k,m]=id.split('~');if(!(k in DEF)||k==='ui')return;
-  if(k==='workouts')HX=null;
+  if(k==='workouts'||k==='exAlias')HX=null;
   if(m||k==='foods'){S[k]={...S[k],...v};return}
   if(k==='settings'){S.settings={...S.settings,...v};return}
   if(Array.isArray(v)){const ids=new Set(v.map(x=>x.id));S[k]=[...v,...(S[k]||[]).filter(x=>!ids.has(x.id))];return}
@@ -583,13 +615,16 @@ async function publishLifts(){
   if(!sbUser||!profile)return;
   const best={};
   for(const [d,a] of Object.entries(S.workouts))for(const e of a)for(const st of working(e.sets)){
-    const k=low(e.name),v=e1(st);if(!best[k]||v>best[k].e1rm)best[k]={exercise:k,name:e.name.trim(),e1rm:r1(v),weight:num(st.w),reps:num(st.r),achieved_on:d};
+    const k=exKey(e.name),v=e1(st);if(!best[k]||v>best[k].e1rm)best[k]={exercise:k,name:canonEx(k).slice(0,80),e1rm:r1(v),weight:num(st.w),reps:num(st.r),achieved_on:d};
   }
   const bw=lastWeight()?.kg??null,rows=Object.values(best).map(r=>({...r,user_id:sbUser.id,bodyweight:bw})),wk0=weekDays(today())[0];
   const prof={bodyweight:bw,week_start:wk0,week_volume:Math.round(sum(weekDays(today()).map(dayVolume)))};
   const sig=canon({rows,prof});if(sig===S.ui.pubSig)return;
   try{
     if(rows.length)await sbq(sb.from('lifts').upsert(rows,{onConflict:'user_id,exercise'}));
+    // rows under old names (before exercises were merged) would show the same lift twice
+    const stale=(await sbq(sb.from('lifts').select('exercise').eq('user_id',sbUser.id))).map(r=>r.exercise).filter(x=>!best[x]);
+    if(stale.length)await sbq(sb.from('lifts').delete().eq('user_id',sbUser.id).in('exercise',stale));
     await sbq(sb.from('profiles').update(prof).eq('id',sbUser.id));
     S.ui.pubSig=sig;localSave();lbAt=0;
   }catch(e){console.warn('leaderboard publish failed',e)}
@@ -673,22 +708,80 @@ function render(){
 function applyPress(){if(pressPath){let el=$('main');for(const i of pressPath)el=el?.children[i];el?.classList.add('pop');pressPath=null}}
 
 // ---------- charts ----------
-// ponytail: points spaced by index, not by date; switch to time-scaled x if gaps matter
-function line(pts,{goal,unit=''}={}){
-  if(pts.length<2)return `<p class="empty">${tx('Нужно минимум 2 записи для графика.')}</p>`;
-  const W=600,H=170,P=14,vs=pts.map(p=>p.v).concat(goal?[goal]:[]);
-  let mn=Math.min(...vs),mx=Math.max(...vs);if(mx===mn){mx+=1;mn-=1}
-  const pd=(mx-mn)*.12;mn-=pd;mx+=pd;
-  const x=i=>P+i*(W-2*P)/(pts.length-1),y=v=>P+(H-2*P)*(1-(v-mn)/(mx-mn));
-  const d=pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
-  const g='g'+uid(),L=pts.length-1;
-  return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E0364F" stop-opacity=".35"/><stop offset="1" stop-color="#E0364F" stop-opacity="0"/></linearGradient></defs>
-  ${goal?`<line x1="${P}" x2="${W-P}" y1="${y(goal)}" y2="${y(goal)}" stroke="#9b8f92" stroke-opacity=".6" stroke-dasharray="4 6"/><text x="${W-P}" y="${y(goal)-8}" text-anchor="end" fill="#9b8f92" font-size="20">${tx('цель')} ${goal}${unit}</text>`:''}
-  <path class="area" d="${d}L${x(L)},${H}L${x(0)},${H}Z" fill="url(#${g})"/>
-  <path class="ln" pathLength="1" d="${d}" fill="none" stroke="#E0364F" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="${x(L)}" cy="${y(pts[L].v)}" r="6" fill="#E0364F"/></svg>
-  <div class="axis"><span>${esc(pts[0].l)}</span><span>${esc(pts[L].l)}</span></div>`;
+// x is time-scaled: gaps between entries show as gaps. CH keeps each drawn chart's points for the tap/drag readout
+const RANGES=[['1m','Месяц',30],['3m','3 мес',91],['1y','Год',365],['all','Всё',0]];
+const CH={};
+const tOf=d=>new Date(d+'T12:00').getTime();
+const fv=v=>Math.abs(v)>=1000?fmt(v):String(r1(v));
+const dShort=d=>new Date(d+'T12:00').toLocaleDateString(LOC(),{day:'numeric',month:'short'}).replace('.','');
+function niceStep(raw){const p=10**Math.floor(Math.log10(raw)),f=raw/p;return p*(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)}
+function xTicks(t0,t1){
+  const span=(t1-t0)/864e5,out=[],d=new Date(t0);d.setHours(12,0,0,0);
+  if(span>120){const m=span>540?3:span>300?2:1;d.setDate(1);d.setMonth(Math.ceil(d.getMonth()/m)*m);if(d.getTime()<t0)d.setMonth(d.getMonth()+m);
+    for(;d.getTime()<=t1;d.setMonth(d.getMonth()+m))out.push({t:d.getTime(),l:d.getMonth()?d.toLocaleDateString(LOC(),{month:'short'}).replace('.',''):String(d.getFullYear())})}
+  else{const s=span>50?14:span>20?7:span>8?3:1;if(s>=7)d.setDate(d.getDate()+(8-d.getDay())%7);
+    for(;d.getTime()<=t1;d.setDate(d.getDate()+s))out.push({t:d.getTime(),l:dShort(iso(d))})}
+  return out;
 }
+function rangeSeg(key){const r=S.ui.rg?.[key]||'3m';
+  return `<div class="seg mini rg">${RANGES.map(([k,n])=>`<button class="${k===r?'on':''}" onclick="setRange('${key}','${k}')">${tx(n)}</button>`).join('')}</div>`}
+function setRange(key,r){S.ui.rg={...S.ui.rg,[key]:r};save();render()}
+// pts: [{d:'YYYY-MM-DD',v}]. key: range switch shared by charts with the same key; seg:false hides the switch (a second chart under the first)
+function line(pts,{goal,unit='',key,id=key,seg=true}={}){
+  if(pts.length<2)return `<p class="empty">${tx('Нужно минимум 2 записи для графика.')}</p>`;
+  const rd=RANGES.find(r=>r[0]===(S.ui.rg?.[key]||'3m'))[2],from=rd?addDays(today(),-rd):'';
+  const head=key&&seg?rangeSeg(key):'';
+  pts=pts.filter(p=>p.d>=from);
+  if(pts.length<2)return head+`<p class="empty">${tx('За этот период меньше двух записей — выберите период длиннее.')}</p>`;
+  const W=600,H=230,PL=54,PR=70,PT=26,PB=36,vs=pts.map(p=>p.v),u=tx(unit.trim());
+  let mn=Math.min(...vs),mx=Math.max(...vs);
+  if(goal&&goal>=mn-(mx-mn)*.6&&goal<=mx+(mx-mn)*.6){mn=Math.min(mn,goal);mx=Math.max(mx,goal)}else goal=0;
+  if(mx===mn){mx+=1;mn-=1}
+  {const pd=(mx-mn)*.16;mn-=pd;mx+=pd}
+  const st=niceStep((mx-mn)/3.5);const y0=Math.floor(mn/st)*st,y1=Math.ceil(mx/st)*st;
+  const t0=tOf(pts[0].d),t1=tOf(pts.at(-1).d),tw=t1-t0||1;
+  const x=t=>PL+(t-t0)/tw*(W-PL-PR),y=v=>PT+(H-PT-PB)*(1-(v-y0)/(y1-y0));
+  const P=pts.map(p=>({...p,x:x(tOf(p.d)),y:y(p.v)}));
+  const d=P.map((p,i)=>`${i?'L':'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
+  const g='g'+uid(),L=P.length-1,bot=H-PB;
+  let iMn=0,iMx=0;P.forEach((p,i)=>{if(p.v<P[iMn].v)iMn=i;if(p.v>=P[iMx].v)iMx=i});
+  CH[id]={P,u};
+  const yt=[];for(let v=y0;v<=y1+st/2;v+=st)yt.push(v);
+  const xt=xTicks(t0,t1).filter(t=>x(t.t)>PL+75&&x(t.t)<W-PR-60);
+  // value labels on the extremes and the last point; drop one that would sit on top of another
+  // the last value sits right of the line, like a price tag; peak above its point, low below. Padding above keeps room for both
+  const marks=[[L,'last'],...P[iMx].v>P[iMn].v?[[iMx,'max'],[iMn,'min']]:[]].filter(([i],k,a)=>a.findIndex(([j])=>j===i)===k);
+  const lab=marks.map(([i,k])=>{const p=P[i],last=k==='last',tx=last?p.x+12:Math.min(Math.max(p.x,PL+24),W-PR-24),ty=last?p.y+6:k==='max'?p.y-12:p.y+24;
+    return `<circle cx="${p.x}" cy="${p.y}" r="${last?6:4.5}" fill="${last?'#E0364F':'#171214'}" stroke="#E0364F" stroke-width="2.5"/>
+    <text x="${tx}" y="${ty}" text-anchor="${last?'start':'middle'}" class="cv ${k}">${fv(p.v)}</text>`}).join('');
+  const stat=(k,i,txt)=>`<span><i>${k}</i><b>${fv(P[i].v)}</b> ${u}<br><small>${txt||dShort(P[i].d)}</small></span>`;
+  const dv=P[L].v-P[0].v;
+  return `${head}<div class="cst">${stat(tx('Мин'),iMn)}${stat(tx('Макс'),iMx)}<span><i>${tx('Изменение')}</i><b>${dv>0?'+':dv<0?'−':''}${fv(Math.abs(dv))}</b> ${u}<br><small>${tx('с {0}',dShort(P[0].d))}</small></span></div>
+  <div class="cread" id="rd_${id}"><span class="mut">${tx('Нажмите на график — покажу дату и значение')}</span></div>
+  <div class="cbox" data-ch="${id}"><svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="${tx('График: от {0} до {1} {2}',fv(P[0].v),fv(P[L].v),u)}"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E0364F" stop-opacity=".3"/><stop offset="1" stop-color="#E0364F" stop-opacity="0"/></linearGradient></defs>
+  <g class="grid">${yt.map(v=>`<line x1="${PL}" x2="${W-PR}" y1="${y(v)}" y2="${y(v)}"/><text x="${PL-10}" y="${y(v)+6}" text-anchor="end">${fv(v)}</text>`).join('')}
+  ${xt.map(t=>`<line x1="${x(t.t)}" x2="${x(t.t)}" y1="${PT-6}" y2="${bot}" class="v"/><text x="${x(t.t)}" y="${H-8}" text-anchor="middle">${t.l}</text>`).join('')}
+  <text x="${PL}" y="${H-8}" text-anchor="start" class="e">${dShort(P[0].d)}</text><text x="${W-PR}" y="${H-8}" text-anchor="middle" class="e">${dShort(P[L].d)}</text></g>
+  ${goal?`<line x1="${PL}" x2="${W-PR}" y1="${y(goal)}" y2="${y(goal)}" stroke="#9b8f92" stroke-opacity=".7" stroke-dasharray="4 6"/><text x="${PL+8}" y="${y(goal)-8}" fill="#9b8f92" font-size="17">${tx('цель')} ${goal} ${u}</text>`:''}
+  <path class="area" d="${d}L${P[L].x},${bot}L${P[0].x},${bot}Z" fill="url(#${g})"/>
+  <path class="ln" pathLength="1" d="${d}" fill="none" stroke="#E0364F" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  ${P.length<=60?`<g class="dots">${P.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.6"/>`).join('')}</g>`:''}
+  ${lab}
+  <g class="hv" visibility="hidden"><line y1="${PT-6}" y2="${bot}"/><circle r="8"/></g></svg></div>`;
+}
+function chartAt(e){
+  const box=e.target.closest?.('.cbox'),c=box&&CH[box.dataset.ch];
+  if(!c){if(e.type==='pointerdown')document.querySelectorAll('.cbox .hv').forEach(h=>h.setAttribute('visibility','hidden'));return}
+  const svg=box.querySelector('svg'),r=svg.getBoundingClientRect(),vx=(e.clientX-r.left)/r.width*svg.viewBox.baseVal.width;
+  let i=0;c.P.forEach((p,j)=>{if(Math.abs(p.x-vx)<Math.abs(c.P[i].x-vx))i=j});
+  const p=c.P[i],pr=c.P[i-1],hv=svg.querySelector('.hv');
+  hv.setAttribute('visibility','visible');hv.querySelector('line').setAttribute('x1',p.x);hv.querySelector('line').setAttribute('x2',p.x);
+  hv.querySelector('circle').setAttribute('cx',p.x);hv.querySelector('circle').setAttribute('cy',p.y);
+  const dv=pr?p.v-pr.v:0;
+  document.getElementById('rd_'+box.dataset.ch).innerHTML=`<b>${fv(p.v)} ${c.u}</b> · ${fmtDay(p.d,{weekday:'short',day:'numeric',month:'long',year:'numeric'})}${pr?` <span class="mut">· ${dv>0?'+':dv<0?'−':'±'}${tx('{0} к {1}',fv(Math.abs(dv)),dShort(pr.d))}</span>`:''}`;
+}
+addEventListener('pointerdown',chartAt);
+addEventListener('pointermove',e=>{if(e.target.closest?.('.cbox')&&(e.buttons||e.pointerType==='mouse'))chartAt(e)});
 function bars(items){
   const mx=Math.max(1,...items.map(i=>i.v));
   return `<div class="bars" role="img">${items.map((it,i)=>`<div class="bc ${it.on?'on':''} ${it.v?'':'z'}">
@@ -766,16 +859,20 @@ const isWork=s=>s.done&&!s.warm; // counts toward weekly working sets (bodyweigh
 // previous session's matching set of the same kind: warm-ups pair with warm-ups, working sets with working sets
 function prevSet(e,i,p){const s=e.sets[i],k=e.sets.slice(0,i).filter(x=>!!x.warm===!!s.warm).length;return p?.sets.filter(x=>!!x.warm===!!s.warm)[k]}
 const dayVolume=d=>sum((S.workouts[d]||[]).flatMap(e=>working(e.sets)).map(s=>num(s.w)*num(s.r)));
-const allEx=()=>[...new Set([...Object.values(S.workouts).flat().map(e=>e.name),...DEFAULT_EX])];
-// per-exercise history index: low(name) -> [{d,e}] by date, then by order within the day.
+// one suggestion per exercise (merged names collapse into one), most recently used first
+const allEx=()=>{const m=new Map();for(const d of Object.keys(S.workouts).sort().reverse())for(const e of S.workouts[d]){const k=exKey(e.name);if(!m.has(k))m.set(k,canonEx(k))}
+  for(const n of DEFAULT_EX)if(!m.has(exKey(n)))m.set(exKey(n),n);return [...m.values()]};
+// per-exercise history index: exKey(name) -> [{d,e}] by date, then by order within the day.
 // Holds the exercise objects themselves, so set edits show up without a rebuild; any full render() or synced
 // workouts shard drops it and the next lookup rebuilds it.
 let HX=null,HXw=null;
 function hx(name){
   if(!HX||HXw!==S.workouts){HX=new Map();HXw=S.workouts;
-    for(const d of Object.keys(S.workouts).sort())for(const e of S.workouts[d]){const k=low(e.name);HX.has(k)?HX.get(k).push({d,e}):HX.set(k,[{d,e}])}}
-  return HX.get(low(name))||[];
+    for(const d of Object.keys(S.workouts).sort())for(const e of S.workouts[d]){const k=exKey(e.name);HX.has(k)?HX.get(k).push({d,e}):HX.set(k,[{d,e}])}}
+  return HX.get(exKey(name))||[];
 }
+// display name of an exercise: the catalog name, else the name it was last logged under
+function canonEx(name){const k=exKey(name);return EX_ID[k]?.ru||hx(k).at(-1)?.e.name||name}
 // latest date before d with an entry passing f; within that date the first match wins
 function hxLast(name,d,f){
   const a=hx(name);let r=null;
@@ -832,9 +929,8 @@ function useTarget(id){const e=exOf(id),t=nextTarget(e.name,day);if(!t)return;
   for(let n=e.sets.filter(s=>!s.warm).length;n<t.sets;n++)e.sets.push({w:'',r:'',done:false,warm:false});
   for(const s of e.sets)if(!s.warm&&!s.done){if(s.w===''&&t.w)s.w=String(t.w);if(s.r==='')s.r=String(t.r)}commitEx(id)}
 function exHistory(name){
-  const k=low(name);
-  return Object.keys(S.workouts).sort().map(d=>{const sets=S.workouts[d].filter(e=>low(e.name)===k).flatMap(e=>working(e.sets));
-    return sets.length&&{d,e1:Math.max(...sets.map(e1)),vol:sum(sets.map(s=>num(s.w)*num(s.r)))}}).filter(Boolean);
+  const by=new Map();for(const {d,e} of hx(name)){const ws=working(e.sets);if(ws.length)by.has(d)?by.get(d).push(...ws):by.set(d,ws)}
+  return [...by].map(([d,sets])=>({d,e1:Math.max(...sets.map(e1)),vol:sum(sets.map(s=>num(s.w)*num(s.r)))}));
 }
 function addEx(){
   const n=exCanon($('#exName').value.trim());if(!n)return;
@@ -1026,9 +1122,9 @@ function exCard(e){
   const idx=e.sets.map((s,i)=>i),warm=idx.filter(i=>e.sets[i].warm),work=idx.filter(i=>!e.sets[i].warm),g=groupOf(e.name);
   const rows=(warm.length?`<div class="warm-h">${tx('Разминка')}</div>${warm.map(row).join('')}${work.length?`<div class="warm-h work">${tx('Рабочие')}</div>`:''}`:'')+work.map(row).join('');
   return `<div class="card" id="ex-${e.id}"><h2 class="exh"><span class="exn">${esc(exLabel(e.name))}${e.sets.some(s=>s.done&&!s.warm&&best>0&&e1(s)>best)?` <span title="${tx('Рекорд')}">🔥</span>`:''}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="${tx('Группа мышц')}">${groupOpts(g)}</select><button class="x" onclick="delEx('${e.id}')" aria-label="${tx('Удалить')}">×</button></h2>
-  ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${tx('Программа')}</span>${esc(cue)}</div></div>`:''}
-  ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
-  ${tg?`<div class="sug"><span class="lbl">${tx('Цель')}</span><b>${tg.w?`${tg.w} ${tx('кг')} × ${tg.r}`:tx('{0} повт.',tg.r)}${tg.sets?` <small class="mut">· ${tx('{0} подх.',tg.sets)}</small>`:''}</b><span class="sm mut">${esc(tg.why)}</span>${e.sets.filter(s=>!s.warm).length<tg.sets||e.sets.some(s=>!s.warm&&!s.done&&(s.w===''&&tg.w||s.r===''))?`<button class="fit" onclick="useTarget('${e.id}')">${tx('Подставить')}</button>`:''}</div>`:''}
+  ${cue?cueBox(tx('Программа'),cue):''}
+  ${pn?cueBox(tx('Заметка')+' · '+fmtDay(pn.d,{day:'numeric',month:'short'}),pn.t,1):''}
+  ${tg?`<div class="sug"><span class="lbl">${tx('Цель')}</span><b>${tg.w?`${tg.w} ${tx('кг')} × ${tg.r}`:tx('{0} повт.',tg.r)}${tg.sets?` <small class="mut">· ${tx('{0} подх.',tg.sets)}</small>`:''}</b><span class="sm why">${esc(tg.why)}</span>${e.sets.filter(s=>!s.warm).length<tg.sets||e.sets.some(s=>!s.warm&&!s.done&&(s.w===''&&tg.w||s.r===''))?`<button class="fit" onclick="useTarget('${e.id}')">${tx('Подставить')}</button>`:''}</div>`:''}
   <div class="set h"><span>${tx('Сет')}</span><span>${tx('Прошлый')}</span><span>${tx('Вес, кг')}</span><span>${tx('Повторы')}</span><span></span></div>${rows}
   <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ ${tx('Подход')}</button><button onclick="addWarm('${e.id}')">+ ${tx('Разминка')}</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="${tx('Убрать подход')}">−</button>`:''}</div>
   <textarea class="exnote" rows="1" placeholder="${tx('Заметка')}" oninput="exOf('${e.id}').note=this.value;save()" aria-label="${tx('Заметка к упражнению')}">${esc(e.note||'')}</textarea>
@@ -1096,10 +1192,11 @@ gym(){
   ${cards}
 
   ${lbCard()}
-  ${recentCard()}`;
+  ${recentCard()}
+  ${exManageCard()}`;
 },
 body(){
-  const w=lastWeight(),fw=weights()[0],names=liftNames(),ex=names.includes(S.ui.ex)?S.ui.ex:names[0],hist=ex?exHistory(ex).slice(-30):[];
+  const w=lastWeight(),fw=weights()[0],names=liftKeys(),ex=names.find(k=>k===exKey(S.ui.ex||''))||names[0],full=ex?exHistory(ex):[],hist=full.slice(-30);
   const mk=MEAS.some(m=>m.k===S.ui.mk)?S.ui.mk:'biceps',m=MEAS.find(x=>x.k===mk),mh=measHist(mk);
   const tag=(m,cur,first,unit)=>{const d=cur!=null&&first!=null?r1(cur-first):null,j=d!=null?judge(m.k):null;
     return `<button class="mtag ${m.side} ${j||''}" style="top:${m.y/5}%;${m.side==='l'?'left:1%':'left:77%'}" onclick="openMeas('${m.k}')"><span class="mn">${tx(m.n)}</span><b>${cur??'—'}${cur!=null?`<small> ${unit}</small>`:''}</b>${d?`<i class="${JC[j]}">${d>0?'+':''}${d} ${unit}</i>`:''}</button>`};
@@ -1113,15 +1210,15 @@ body(){
   <div class="card" id="mk"><h2>${tx('Замеры в динамике')}</h2>
     <div class="seg">${MEAS.map(x=>`<button class="${x.k===mk?'on':''}" onclick="pick('mk','${x.k}')">${tx(x.n)}</button>`).join('')}</div>
     ${mh.length?`<div class="big">${mh.at(-1).v} <small>${tx('см')} · ${tx(m.n).toLowerCase()}</small></div>${mh.length>1?`<div class="sm ${JC[judge(mk)]}">${mh.at(-1).v-mh[0].v>0?'+':''}${tx('{0} см с {1}',r1(mh.at(-1).v-mh[0].v),fmtDay(mh[0].d,{day:'numeric',month:'short'}))}</div>`:''}`:''}
-    ${line(mh.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:h.v})))}</div>
+    ${line(mh,{unit:' см',key:'meas',id:'meas'})}</div>
   <div class="card"><h2>${tx('Прогресс всех замеров')}</h2>${ov.length?`<div class="ov">${ov.map(o=>`<span>${tx(o.m.n)}</span><span class="tr"><i class="${o.j}" style="${o.pc>=0?'left:50%':'right:50%'};width:${Math.abs(o.pc)/mx*50}%;transform-origin:${o.pc>=0?'left':'right'}"></i></span><span class="${JC[o.j]}">${o.b-o.a>0?'+':''}${r1(o.b-o.a)} ${tx('см')} · ${o.pc>0?'+':''}${r1(o.pc)}%</span>`).join('')}</div>`:`<p class="empty">${tx('Нужно 2 замера.')}</p>`}</div>
 ${weightCard()}
   <div class="card hot" id="ex"><h2>${tx('Силовые показатели')}</h2>
-    ${names.length?`<div class="seg">${names.map(n=>`<button class="${n===ex?'on':''}" data-n="${esc(n)}" onclick="pick('ex',this.dataset.n)">${esc(exLabel(n))}</button>`).join('')}</div>
+    ${names.length?`<div class="seg">${names.map(k=>`<button class="${k===ex?'on':''}" onclick="pick('ex','${esc(k)}')">${esc(exLabel(canonEx(k)))}</button>`).join('')}</div>
     <div class="row" style="margin-bottom:8px"><div><div class="lbl">${tx('Расчётный 1ПМ')}</div><div class="big">${r1(hist.at(-1).e1)} <small>${tx('кг')}</small></div>${hist.length>1?`<div class="sm ${hist.at(-1).e1>=hist[0].e1?'up':'down'}">${hist.at(-1).e1>=hist[0].e1?'+':''}${tx('{0} кг с {1}',r1(hist.at(-1).e1-hist[0].e1),fmtDay(hist[0].d,{day:'numeric',month:'short'}))}</div>`:''}</div>
     <div><div class="lbl">${tx('Рекорд')}</div><div class="big">${r1(Math.max(...hist.map(h=>h.e1)))} <small>${tx('кг')}</small></div></div></div>
-    ${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:r1(h.e1)})))}
-    <div class="lbl" style="margin-top:16px">${tx('Объём, кг')}</div>${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:h.vol})))}`
+    ${line(full.map(h=>({d:h.d,v:r1(h.e1)})),{unit:' кг',key:'ex',id:'e1'})}
+    <div class="lbl" style="margin-top:16px">${tx('Объём, кг')}</div>${line(full.map(h=>({d:h.d,v:h.vol})),{unit:' кг',key:'ex',id:'vol',seg:false})}`
     :`<p class="empty">${tx('Отметь подходы в «Зале».')}</p>`}</div>`;
 },
 food(){
@@ -1144,12 +1241,12 @@ food(){
 }};
 
 function weightCard(){
-  const st=S.settings,ws=weightStats(),w=weights().slice(-60);
+  const st=S.settings,ws=weightStats(),w=weights();
   return `  <div class="card hot"><h2>${tx('Вес тела')}<span class="sp"></span><span class="chip g">${tx('Цель: {0} кг',st.goalWeight)}</span></h2>
     <div class="row" style="margin-bottom:14px"><input id="wIn" inputmode="decimal" placeholder="${tx('Вес за {0}, кг',fmtDay(day,{day:'numeric',month:'short'}))}" value="${S.weight[day]??''}" onkeydown="event.key==='Enter'&&setWeight()"><button class="btn-a fit" onclick="setWeight()">${tx('Сохранить')}</button>${S.weight[day]?`<button class="fit" onclick="delWeight()">${tx('Удалить')}</button>`:''}</div>
     ${w.length?`<div class="big">${w.at(-1)[1]} <small>${tx('кг')}</small></div>`:''}
-    ${ws?`<div class="sm" style="margin:4px 0 10px"><b class="${(ws.weekly>0)===ws.bulk?'up':'down'}">${ws.weekly>0?'+':''}${r1(ws.weekly)} ${tx('кг/нед')} (${r1(ws.pw)}%)</b> · ${ws.zone}${ws.eta?` · ${tx('цель через ≈ {0} нед',ws.eta)}`:''}</div>`:''}
-    ${line(w.map(([d,v])=>({l:fmtDay(d,{day:'numeric',month:'short'})+` (${v} ${tx('кг')})`,v})),{goal:num(st.goalWeight),unit:' '+tx('кг')})}</div>`;
+    ${ws?`<div class="stats"><span class="chip g"><b class="${(ws.weekly>0)===ws.bulk?'up':'down'}">${ws.weekly>0?'+':''}${r1(ws.weekly)} ${tx('кг/нед')}</b> · ${ws.pw>0?'+':''}${r1(ws.pw)}%</span><span class="chip g">${cap(ws.zone)}</span>${ws.eta?`<span class="chip g">${tx('До цели ≈ {0} нед',ws.eta)}</span>`:''}</div>`:''}
+    ${line(w.map(([d,v])=>({d,v})),{goal:num(st.goalWeight),unit:' кг',key:'weight'})}</div>`;
 }
 
 // ---------- body measurements ----------
@@ -1186,7 +1283,7 @@ function judge(k){
   return (w?pc<w.pc:pc<-3)?'b':'n';
 }
 function liftTrend(since){
-  const r=liftNames().map(n=>{const h=exHistory(n).filter(x=>x.d>=since);return h.length>=2?(h.at(-1).e1/h[0].e1-1)*100:null}).filter(v=>v!=null);
+  const r=liftKeys().map(n=>{const h=exHistory(n).filter(x=>x.d>=since);return h.length>=2?(h.at(-1).e1/h[0].e1-1)*100:null}).filter(v=>v!=null);
   return r.length?{pc:sum(r)/r.length,n:r.length}:null;
 }
 // cut check: rate of loss, waist vs muscle girths, strength — strength is the best tell for keeping muscle
@@ -1205,7 +1302,7 @@ function cutCard(){
     <div class="list">${rows.map(([v,t,d])=>`<div class="item"><span class="vd ${v}"></span><div class="t">${t}</div><span class="sm mut fit">${d}</span></div>`).join('')}</div>
     ${bad?`<p class="sm mut" style="margin-top:12px">${tx('Белок 1.6–2.2 г/кг · до 1% веса в неделю · тяжёлая база · сон 7–9 ч')}</p>`:''}</div>`;
 }
-const liftNames=()=>[...new Set(Object.values(S.workouts).flat().filter(e=>working(e.sets).length).map(e=>e.name))];
+const liftKeys=()=>[...new Set(Object.values(S.workouts).flat().filter(e=>working(e.sets).length).map(e=>exKey(e.name)))];
 function pick(key,v){S.ui[key]=v;save();render();const c=document.getElementById(key);if(!c)return;c.classList.remove('enter');void c.offsetWidth;c.classList.add('enter');setTimeout(()=>c.classList.remove('enter'),1300)}
 function openMeas(k){
   const all=[WM,...MEAS],today_=S.body[day]||{};
@@ -1425,19 +1522,27 @@ function progFor(d){
 }
 // comment for an exercise: today's program day first, then any day of the program
 function progNote(name){
-  const k=low(name),days=[progFor(day),...(S.program?.days||[])].filter(Boolean);
-  for(const d of days){const e=exs(d).find(x=>low(x.n)===k&&x.c);if(e)return e.c}
+  const k=exKey(name),days=[progFor(day),...(S.program?.days||[])].filter(Boolean);
+  for(const d of days){const e=exs(d).find(x=>x.c&&exKey(x.n)===k);if(e)return e.c}
   return '';
 }
 function prevNote(name,d){const x=hxLast(name,d,e=>e.note);return x&&{d:x.d,t:x.e.note}}
 function progAttach(v){S.progDay[day]=v;commit()}
 function progAdd(names){
-  const have=new Set(wk(day).map(e=>low(e.name)));
+  const have=new Set(wk(day).map(e=>exKey(e.name)));
   // only the exercise name: no planned sets/reps, one empty row to start logging
-  names.filter(n=>!have.has(low(n))).forEach(n=>wk(day).push({id:uid(),name:n,sets:[{w:'',r:'',done:false,warm:false}]}));
+  names.filter(n=>!have.has(exKey(n))).forEach(n=>wk(day).push({id:uid(),name:n,sets:[{w:'',r:'',done:false,warm:false}]}));
   commit();
 }
-const rulesBlock=r=>r?.length?`<details class="rules"><summary>${tx('Правила программы')} · ${r.length}</summary><dl>${r.map(x=>`<dt>${esc(x.t)}</dt><dd>${esc(x.d)}</dd>`).join('')}</dl></details>`:'';
+// long comments read better as short points: split on sentence ends, «;» and line breaks
+const points=t=>String(t||'').split(/\n+|(?<=[.!?;])\s+(?=[«"(]?[A-ZА-ЯЁ0-9])|;\s+/).map(x=>x.trim().replace(/[.;]$/,'')).filter(Boolean);
+const ptsList=t=>`<ul class="pts">${points(t).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+// collapsible comment: label + first point; tap shows all points
+function cueBox(label,text,mine){
+  const n=points(text).length;
+  return `<div class="cue${mine?' mine':''}" onclick="this.classList.toggle('open')"><div class="ch"><span class="lbl">${label}</span>${n>1||String(text).length>90?`<span class="more">${n>1?tx('ещё {0}',n-1):tx('весь текст')}</span>`:''}</div><div class="cl">${ptsList(text)}</div></div>`;
+}
+const rulesBlock=r=>r?.length?`<details class="rules"><summary>${tx('Правила программы')} · ${r.length}</summary><dl>${r.map(x=>`<div class="rl"><dt>${esc(x.t)}</dt><dd>${ptsList(x.d)}</dd></div>`).join('')}</dl></details>`:'';
 function progCard(){
   const wdSel=(v,on)=>`<select class="fit" style="width:auto" onchange="${on}">${[['','Без дня недели'],...WDN].map(([k,n])=>`<option value="${k}" ${String(v??'')===String(k)?'selected':''}>${tx(n)}</option>`).join('')}</select>`;
   if(progDraft)return `<div class="card hot" id="prog"><h2>📋 ${tx('Программа: проверь и сохрани')}</h2>
@@ -1455,11 +1560,11 @@ function progCard(){
   if(!P?.days?.length)return `<div class="card" id="prog"><h2>📋 ${tx('Моя программа')}</h2>
     <p class="sm mut" style="margin-bottom:12px">${tx('Excel, PDF, Word или текст.')}</p>
     <div class="row"><button class="btn-a" onclick="progFile.click()">${tx('Загрузить файл')}</button><button onclick="progPaste()">${tx('Вставить текст')}</button></div></div>`;
-  const d=progFor(day),list=d?exs(d):[],have=new Set(wk(day).map(e=>low(e.name))),miss=list.filter(e=>!have.has(low(e.n))),sel=d?d.id:'none';
+  const d=progFor(day),list=d?exs(d):[],have=new Set(wk(day).map(e=>exKey(e.name))),miss=list.filter(e=>!have.has(exKey(e.n))),sel=d?d.id:'none';
   return `<div class="card hot" id="prog"><h2>📋 ${esc(P.name)}<span class="sp"></span><button class="ico" onclick="progEdit()">${tx('Изменить')}</button></h2>
     <div class="row" style="margin-bottom:12px">
       <select onchange="progAttach(this.value)" aria-label="${tx('День программы на эту дату')}"><option value="none" ${sel==='none'?'selected':''}>${tx('Без программы')}</option>${P.days.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${esc(x.name)}${x.wd!=null?' · '+tx(WDN.find(w=>w[0]===x.wd)[1]):''}</option>`).join('')}</select></div>
-    ${d?`<div class="list">${list.map(e=>{const added=have.has(low(e.n));
+    ${d?`<div class="list">${list.map(e=>{const added=have.has(exKey(e.n));
         return `<div class="item ${added?'done':''}" ${added?'':`onclick='progAdd([${esc(JSON.stringify(e.n))}])' style="cursor:pointer"`}><div class="t">${esc(exLabel(e.n))}</div><span class="sm ${added?'up':'mut'} fit">${added?'✓':'+'}</span></div>`}).join('')}</div>
       ${miss.length?`<button class="btn-a" style="width:100%;margin-top:12px" onclick="progAdd(exs(progFor(day)).map(e=>e.n))">${tx('Начать тренировку: {0} упр.',miss.length)}</button>`:`<p class="sm up" style="margin-top:10px">✓ ${tx('Всё добавлено')}</p>`}`
       :`<p class="empty">${tx('Сегодня без программы.')}</p>`}
@@ -1484,15 +1589,17 @@ const GUESS=[
   [/жим|груд|сведени|бабочк|пек|отжиман|брус|кроссовер|bench|press|fly|chest|dip|push/i,'Грудь'],
 ];
 function groupOf(name){
-  const k=low(name);if(S.exGroups[k])return S.exGroups[k];
-  for(const d of S.program?.days||[]){const e=exs(d).find(x=>low(x.n)===k&&x.g);if(e)return normG(e.g)}
+  const k=exKey(name);if(S.exGroups[k])return S.exGroups[k];
+  for(const d of S.program?.days||[]){const e=exs(d).find(x=>x.g&&exKey(x.n)===k);if(e)return normG(e.g)}
+  if(EX_ID[k])return EX_ID[k].g;
+  if(/^[xn]:/.test(name))name=canonEx(name);
   for(const [re,g] of GUESS)if(re.test(name))return g;
   return 'Другое';
 }
 const groupOpts=g=>groupList().map(x=>`<option value="${esc(x)}" ${x===g?'selected':''}>${esc(tx(x))}</option>`).join('');
 const macros=x=>`${tx('Б')} ${r1(x.p)} · ${tx('Ж')} ${r1(x.f)} · ${tx('У')} ${r1(x.c)}`;
 const groupList=()=>[...new Set([...GROUPS,...(S.program?.days||[]).flatMap(d=>exs(d).map(e=>e.g&&normG(e.g))).filter(Boolean),...Object.values(S.exGroups),'Другое'])];
-function setGroup(id,g){S.exGroups[low(exOf(id).name)]=g;commit()}
+function setGroup(id,g){S.exGroups[exKey(exOf(id).name)]=g;commit()}
 const isCardio=name=>groupOf(name)==='Кардио';
 const dayCardio=d=>sum((S.workouts[d]||[]).filter(e=>isCardio(e.name)).flatMap(e=>e.sets.filter(isWork)).map(s=>num(s.t)));
 // cardio is counted in minutes; 150–300 min/week of moderate activity is the WHO guideline
@@ -1508,8 +1615,8 @@ function cardioCard(e,p,cue,pn){
       <input inputmode="decimal" value="${esc(s.km)}" placeholder="${esc(ps?.km||tx('км'))}" oninput="setVal('${e.id}',${i},'km',this.value)" aria-label="${tx('Километры')}">
       <button class="chk ${s.done?'on':''}" onclick="doneSet('${e.id}',${i})" aria-label="${tx('Отрезок выполнен')}"></button></div>`}).join('');
   return `<div class="card" id="ex-${e.id}"><h2 class="exh"><span class="exn">${esc(exLabel(e.name))}</span><select class="gsel" onchange="setGroup('${e.id}',this.value)" aria-label="${tx('Группа мышц')}">${groupOpts(g)}</select><button class="x" onclick="delEx('${e.id}')" aria-label="${tx('Удалить')}">×</button></h2>
-    ${cue?`<div class="cue" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${tx('Программа')}</span>${esc(cue)}</div></div>`:''}
-    ${pn?`<div class="cue mine" onclick="this.classList.toggle('open')"><div class="cl"><span class="lbl">${fmtDay(pn.d,{day:'numeric',month:'short'})}</span>${esc(pn.t)}</div></div>`:''}
+    ${cue?cueBox(tx('Программа'),cue):''}
+    ${pn?cueBox(tx('Заметка')+' · '+fmtDay(pn.d,{day:'numeric',month:'short'}),pn.t,1):''}
     <div class="set h"><span>№</span><span>${tx('Прошлый')}</span><span>${tx('Минуты')}</span><span>${tx('Км')}</span><span></span></div>${rows}
     <div class="row" style="margin-top:10px"><button onclick="addSet('${e.id}')">+ ${tx('Отрезок')}</button>${e.sets.length?`<button class="fit" onclick="popSet('${e.id}')" aria-label="${tx('Убрать отрезок')}">−</button>`:''}</div>
     ${T?`<div class="sm" style="margin-top:10px">${tx('Итого')}: <b>${r1(T)} ${tx('мин')}</b>${K?` · <b>${r1(K)} ${tx('км')}</b> · ${tx('темп')} ${fmtPace(T/K)} ${tx('мин/км')} · ${r1(K/T*60)} ${tx('км/ч')}`:''}</div>`:''}
@@ -1527,6 +1634,58 @@ function weekGroupsCard(){
       const [lo,hi]=targetOf(g),mx=Math.max(hi*1.25,n),st=n<lo?'lo':n>hi?'hi':'ok';
       return `<span class="gn">${esc(tx(g))}</span><span class="tr"><span class="zone" style="left:${lo/mx*100}%;width:${(hi-lo)/mx*100}%"></span><i class="${st}" style="width:${n/mx*100}%"></i></span><span class="gv ${st}"><b>${r1(n)}</b> / ${lo}–${hi}${g==='Кардио'?' '+tx('мин'):''}</span>`}).join('')}</div>
     <p class="sm mut" style="margin-top:12px">${tx('Всего {0} · зелёная зона — норма',sum(Object.entries(cnt).filter(([g])=>g!=='Кардио').map(([,v])=>v)))}</p></div>`;
+}
+
+// ---------- one exercise, many names: review, merge and split ----------
+// Merging links one exercise key to another in S.exAlias (synced), so history, records, targets and groups join;
+// splitting gives a name its own key. Workouts keep the names as typed, so either is undone without loss.
+function exGroupsList(){
+  const m=new Map(),add=(n,d)=>{const k=exKey(n),g=m.get(k)||m.set(k,{k,names:new Map(),n:0,last:''}).get(k),t=n.trim();
+    g.names.set(t,(g.names.get(t)||0)+(d?1:0));if(d){g.n++;if(d>g.last)g.last=d}};
+  for(const [d,a] of Object.entries(S.workouts))for(const e of a)add(e.name,d);
+  for(const d of S.program?.days||[])for(const e of exs(d))add(e.n,'');
+  // the same spelling with other case/ё is one name
+  for(const g of m.values()){const seen=new Map();for(const [n,c] of g.names){const x=exNorm(n);seen.has(x)?seen.get(x)[1]+=c:seen.set(x,[n,c])}g.names=new Map(seen.values())}
+  return [...m.values()].sort((a,b)=>b.n-a.n||(a.last<b.last?1:-1));
+}
+const exTokM=new Map(),exToks=n=>exTokM.get(n)||exTokM.set(n,new Set(exSig(exNorm(n)).split(' '))).get(n);
+// likely the same exercise: same muscle group, and one name has exactly one extra word («жим» / «жим лёжа»)
+function exSimilar(gs){
+  const no=new Set(S.ui.exNo||[]),out=[];
+  for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){const a=gs[i],b=gs[j];
+    if(no.has(a.k+'|'+b.k)||groupOf(a.k)!==groupOf(b.k))continue;
+    const hit=[...a.names.keys()].some(x=>[...b.names.keys()].some(y=>{const A=exToks(x),B=exToks(y),[s,l]=A.size<B.size?[A,B]:[B,A];
+      return l.size-s.size===1&&[...s].every(t=>l.has(t))}));
+    if(hit)out.push([a,b]);if(out.length>=5)return out}
+  return out;
+}
+async function exMerge(from,to){
+  from=exKey(from);to=exKey(to);if(from===to)return;
+  if(!await ask(tx('Объединить «{0}» с «{1}»? История, рекорды и цели станут общими. Разделить можно в любой момент.',exLabel(canonEx(from)),exLabel(canonEx(to)))))return render();
+  S.exAlias[from]=to;if(!S.exGroups[to]&&S.exGroups[from])S.exGroups[to]=S.exGroups[from];
+  commit();toast(tx('Упражнения объединены'));
+}
+// take one name out of its exercise: undo the merge it came through, else give the name its own key
+function exSplit(name){
+  const n=exNorm(name),A=S.exAlias,k=exKey(name);let c=A[n]||exAutoKey(n),prev=null;
+  for(let i=0;i<8&&c!==k&&A[c];i++){prev=c;c=A[c]}
+  if(prev)delete A[prev];else A[n]=('n:'+n).slice(0,80);
+  commit();toast(tx('«{0}» — отдельное упражнение',name));
+}
+function exUnsplit(k){const n=k.slice(2);delete S.exAlias[n];commit();toast(tx('Вернул в общее упражнение'))}
+function exDismiss(a,b){(S.ui.exNo||=[]).push(a+'|'+b);commit()}
+function exManageCard(){
+  const gs=exGroupsList();if(!gs.length)return '';
+  const sim=exSimilar(gs),many=gs.filter(g=>g.names.size>1).length,nm=k=>esc(exLabel(canonEx(k)));
+  return `<div class="card" id="exm"><details ${S.ui.exmOpen?'open':''} ontoggle="S.ui.exmOpen=this.open;save()"><summary>${tx('Упражнения и названия')}<span class="sm mut"> · ${gs.length}${sim.length?` · <b class="down">${tx('{0} похожих',sim.length)}</b>`:''}</span></summary>
+    <p class="sm mut" style="margin:8px 0 12px">${tx('Одно упражнение под разными названиями считается вместе: история, рекорды, цели.')} ${many?tx('Уже объединено автоматически: {0}.',many):''}</p>
+    ${sim.length?`<div class="lbl">${tx('Похоже на одно и то же')}</div><div class="list" style="margin-bottom:14px">${sim.map(([a,b])=>`<div class="item"><div class="t">${nm(a.k)} <span class="mut">${tx('и')}</span> ${nm(b.k)}</div>
+      <button class="fit" onclick="exMerge('${esc(b.k)}','${esc(a.k)}')">${tx('Объединить')}</button><button class="x fit" onclick="exDismiss('${esc(a.k)}','${esc(b.k)}')" aria-label="${tx('Это разные упражнения')}">×</button></div>`).join('')}</div>`:''}
+    <div class="list">${gs.map(g=>`<div class="item exg"><div class="t"><b>${nm(g.k)}</b> <span class="sm mut">${g.n?tx('{0} трен.',g.n):tx('в программе')}</span>
+      ${g.names.size>1?`<div class="chips exv">${[...g.names].map(([n,c])=>`<span class="chip">${esc(n)}${c?`<span class="mut">&nbsp;· ${c}</span>`:''}<button class="x" onclick='exSplit(${esc(JSON.stringify(n))})' title="${tx('Отделить в отдельное упражнение')}" aria-label="${tx('Отделить')}">×</button></span>`).join('')}</div>`:''}
+      ${g.k.startsWith('n:')?`<button class="sm" style="margin-top:6px" onclick="exUnsplit('${esc(g.k)}')">${tx('Вернуть в «{0}»',esc(exLabel(canonEx(exAutoKey(g.k.slice(2))))))}</button>`:''}</div>
+      <select class="fit gsel" onchange="this.value&&exMerge('${esc(g.k)}',this.value)" aria-label="${tx('Объединить с')}"><option value="">${tx('Объединить с…')}</option>${gs.filter(x=>x!==g).map(x=>`<option value="${esc(x.k)}">${nm(x.k)}</option>`).join('')}</select></div>`).join('')}</div>
+  </details></div>`;
 }
 
 // ---------- research popup ----------
