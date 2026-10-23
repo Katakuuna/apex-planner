@@ -122,6 +122,7 @@ const EN={
   // leaderboard
   'Лидеры':'Leaderboard','Войти, чтобы участвовать':'Sign in to take part','Загружаю…':'Loading…','Упражнение':'Exercise',
   '1ПМ':'1RM','÷ вес':'÷ weight','Неделя':'Week','Свернуть':'Show less','Все {0}':'All {0}','Пока пусто':'Nothing yet',
+  'Найти упражнение':'Find an exercise','Найдено':'Found','Ничего не найдено':'Nothing found','Мои':'Mine','Все упражнения':'All exercises',
   // charts
   'Нужно минимум 2 записи для графика.':'At least 2 entries are needed for a chart.','цель':'goal','из {0} ккал':'of {0} kcal',
   // planner
