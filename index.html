@@ -94,7 +94,14 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 .set .prev{font-size:13px;color:var(--mut)}
 .set input{padding:8px;text-align:center}
 .chart{width:100%;height:auto;display:block;overflow:visible}
-.axis{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-top:4px}
+.cbox{position:relative;touch-action:pan-y;cursor:crosshair;user-select:none;-webkit-user-select:none}
+.chart .grid line{stroke:#ffffff12;stroke-width:1}.chart .grid line.v{stroke:#ffffff0a}.chart .grid text{fill:var(--mut);font-size:17px;font-variant-numeric:tabular-nums}.chart .grid text.e{fill:#9b8f92aa;font-size:15px}
+.chart .dots circle{fill:#171214;stroke:#E0364F;stroke-width:1.6}
+.chart .cv{font-size:19px;font-weight:700;fill:var(--txt);paint-order:stroke;stroke:#171214;stroke-width:7px;stroke-linejoin:round;font-variant-numeric:tabular-nums}.chart .cv.min,.chart .cv.max{fill:var(--rose);font-weight:600}
+.chart .hv line{stroke:var(--txt);stroke-opacity:.45;stroke-width:1.2;stroke-dasharray:3 4}.chart .hv circle{fill:var(--acc2);stroke:#fff;stroke-width:3}
+.cst{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 10px;font-size:12px;color:var(--mut);line-height:1.3}.cst i{display:block;font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--rose)}.cst b{font-size:16px;color:var(--txt);font-variant-numeric:tabular-nums}.cst small{font-size:12px}
+.cread{min-height:20px;font-size:13px;margin-bottom:4px;font-variant-numeric:tabular-nums}.cread .mut{font-size:12px}
+.rg{margin:4px 0 10px}
 .nutri{display:flex;gap:24px;align-items:center;flex-wrap:wrap}.ring{width:170px;flex:0 0 auto;margin:auto;filter:drop-shadow(0 0 18px #9b1b3040)}
 .macros{flex:1 1 220px;display:flex;flex-direction:column;gap:12px}
 .fgrid{display:grid;grid-template-columns:2fr repeat(5,1fr);gap:8px}
@@ -296,7 +303,6 @@ button,input,select{min-height:40px}.chk,.x,.set .n,.set input,.seg button,.chip
 .bc.on .br{background:linear-gradient(var(--acc2),var(--acc));box-shadow:0 4px 18px #e0364f40}
 .bc .bv{font-size:11px;font-weight:600;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap;min-height:14px;line-height:14px}
 .bc .bl{font-size:11px;color:var(--mut);text-transform:capitalize}.bc.on .bl{color:var(--txt);font-weight:600}
-.axis{font-size:11px;margin-top:8px}
 .nutri{gap:20px}
 nav{bottom:calc(12px + env(safe-area-inset-bottom))}
 #sciBtn{width:40px;height:40px;font-size:18px;min-height:0}
@@ -685,22 +691,80 @@ function render(){
 function applyPress(){if(pressPath){let el=$('main');for(const i of pressPath)el=el?.children[i];el?.classList.add('pop');pressPath=null}}
 
 // ---------- charts ----------
-// ponytail: points spaced by index, not by date; switch to time-scaled x if gaps matter
-function line(pts,{goal,unit=''}={}){
-  if(pts.length<2)return '<p class="empty">Нужно минимум 2 записи для графика.</p>';
-  const W=600,H=170,P=14,vs=pts.map(p=>p.v).concat(goal?[goal]:[]);
-  let mn=Math.min(...vs),mx=Math.max(...vs);if(mx===mn){mx+=1;mn-=1}
-  const pd=(mx-mn)*.12;mn-=pd;mx+=pd;
-  const x=i=>P+i*(W-2*P)/(pts.length-1),y=v=>P+(H-2*P)*(1-(v-mn)/(mx-mn));
-  const d=pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
-  const g='g'+uid(),L=pts.length-1;
-  return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E0364F" stop-opacity=".35"/><stop offset="1" stop-color="#E0364F" stop-opacity="0"/></linearGradient></defs>
-  ${goal?`<line x1="${P}" x2="${W-P}" y1="${y(goal)}" y2="${y(goal)}" stroke="#9b8f92" stroke-opacity=".6" stroke-dasharray="4 6"/><text x="${W-P}" y="${y(goal)-8}" text-anchor="end" fill="#9b8f92" font-size="20">цель ${goal}${unit}</text>`:''}
-  <path class="area" d="${d}L${x(L)},${H}L${x(0)},${H}Z" fill="url(#${g})"/>
-  <path class="ln" pathLength="1" d="${d}" fill="none" stroke="#E0364F" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="${x(L)}" cy="${y(pts[L].v)}" r="6" fill="#E0364F"/></svg>
-  <div class="axis"><span>${esc(pts[0].l)}</span><span>${esc(pts[L].l)}</span></div>`;
+// x is time-scaled: gaps between entries show as gaps. CH keeps each drawn chart's points for the tap/drag readout
+const RANGES=[['1m','Месяц',30],['3m','3 мес',91],['1y','Год',365],['all','Всё',0]];
+const CH={};
+const tOf=d=>new Date(d+'T12:00').getTime();
+const fv=v=>Math.abs(v)>=1000?fmt(v):String(r1(v));
+const dShort=d=>new Date(d+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short'}).replace('.','');
+function niceStep(raw){const p=10**Math.floor(Math.log10(raw)),f=raw/p;return p*(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)}
+function xTicks(t0,t1){
+  const span=(t1-t0)/864e5,out=[],d=new Date(t0);d.setHours(12,0,0,0);
+  if(span>120){const m=span>540?3:span>300?2:1;d.setDate(1);d.setMonth(Math.ceil(d.getMonth()/m)*m);if(d.getTime()<t0)d.setMonth(d.getMonth()+m);
+    for(;d.getTime()<=t1;d.setMonth(d.getMonth()+m))out.push({t:d.getTime(),l:d.getMonth()?d.toLocaleDateString('ru-RU',{month:'short'}).replace('.',''):String(d.getFullYear())})}
+  else{const s=span>50?14:span>20?7:span>8?3:1;if(s>=7)d.setDate(d.getDate()+(8-d.getDay())%7);
+    for(;d.getTime()<=t1;d.setDate(d.getDate()+s))out.push({t:d.getTime(),l:dShort(iso(d))})}
+  return out;
 }
+function rangeSeg(key){const r=S.ui.rg?.[key]||'3m';
+  return `<div class="seg mini rg">${RANGES.map(([k,n])=>`<button class="${k===r?'on':''}" onclick="setRange('${key}','${k}')">${n}</button>`).join('')}</div>`}
+function setRange(key,r){S.ui.rg={...S.ui.rg,[key]:r};save();render()}
+// pts: [{d:'YYYY-MM-DD',v}]. key: range switch shared by charts with the same key; seg:false hides the switch (a second chart under the first)
+function line(pts,{goal,unit='',key,id=key,seg=true}={}){
+  if(pts.length<2)return '<p class="empty">Нужно минимум 2 записи для графика.</p>';
+  const rd=RANGES.find(r=>r[0]===(S.ui.rg?.[key]||'3m'))[2],from=rd?addDays(today(),-rd):'';
+  const head=key&&seg?rangeSeg(key):'';
+  pts=pts.filter(p=>p.d>=from);
+  if(pts.length<2)return head+'<p class="empty">За этот период меньше двух записей — выберите период длиннее.</p>';
+  const W=600,H=230,PL=54,PR=70,PT=26,PB=36,vs=pts.map(p=>p.v),u=unit.trim();
+  let mn=Math.min(...vs),mx=Math.max(...vs);
+  if(goal&&goal>=mn-(mx-mn)*.6&&goal<=mx+(mx-mn)*.6){mn=Math.min(mn,goal);mx=Math.max(mx,goal)}else goal=0;
+  if(mx===mn){mx+=1;mn-=1}
+  {const pd=(mx-mn)*.16;mn-=pd;mx+=pd}
+  const st=niceStep((mx-mn)/3.5);const y0=Math.floor(mn/st)*st,y1=Math.ceil(mx/st)*st;
+  const t0=tOf(pts[0].d),t1=tOf(pts.at(-1).d),tw=t1-t0||1;
+  const x=t=>PL+(t-t0)/tw*(W-PL-PR),y=v=>PT+(H-PT-PB)*(1-(v-y0)/(y1-y0));
+  const P=pts.map(p=>({...p,x:x(tOf(p.d)),y:y(p.v)}));
+  const d=P.map((p,i)=>`${i?'L':'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
+  const g='g'+uid(),L=P.length-1,bot=H-PB;
+  let iMn=0,iMx=0;P.forEach((p,i)=>{if(p.v<P[iMn].v)iMn=i;if(p.v>=P[iMx].v)iMx=i});
+  CH[id]={P,u};
+  const yt=[];for(let v=y0;v<=y1+st/2;v+=st)yt.push(v);
+  const xt=xTicks(t0,t1).filter(t=>x(t.t)>PL+75&&x(t.t)<W-PR-60);
+  // value labels on the extremes and the last point; drop one that would sit on top of another
+  // the last value sits right of the line, like a price tag; peak above its point, low below. Padding above keeps room for both
+  const marks=[[L,'last'],...P[iMx].v>P[iMn].v?[[iMx,'max'],[iMn,'min']]:[]].filter(([i],k,a)=>a.findIndex(([j])=>j===i)===k);
+  const lab=marks.map(([i,k])=>{const p=P[i],last=k==='last',tx=last?p.x+12:Math.min(Math.max(p.x,PL+24),W-PR-24),ty=last?p.y+6:k==='max'?p.y-12:p.y+24;
+    return `<circle cx="${p.x}" cy="${p.y}" r="${last?6:4.5}" fill="${last?'#E0364F':'#171214'}" stroke="#E0364F" stroke-width="2.5"/>
+    <text x="${tx}" y="${ty}" text-anchor="${last?'start':'middle'}" class="cv ${k}">${fv(p.v)}</text>`}).join('');
+  const stat=(k,i,txt)=>`<span><i>${k}</i><b>${fv(P[i].v)}</b> ${u}<br><small>${txt||dShort(P[i].d)}</small></span>`;
+  const dv=P[L].v-P[0].v;
+  return `${head}<div class="cst">${stat('Мин',iMn)}${stat('Макс',iMx)}<span><i>Изменение</i><b>${dv>0?'+':dv<0?'−':''}${fv(Math.abs(dv))}</b> ${u}<br><small>с ${dShort(P[0].d)}</small></span></div>
+  <div class="cread" id="rd_${id}"><span class="mut">Нажмите на график — покажу дату и значение</span></div>
+  <div class="cbox" data-ch="${id}"><svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="График: от ${fv(P[0].v)} до ${fv(P[L].v)} ${u}"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E0364F" stop-opacity=".3"/><stop offset="1" stop-color="#E0364F" stop-opacity="0"/></linearGradient></defs>
+  <g class="grid">${yt.map(v=>`<line x1="${PL}" x2="${W-PR}" y1="${y(v)}" y2="${y(v)}"/><text x="${PL-10}" y="${y(v)+6}" text-anchor="end">${fv(v)}</text>`).join('')}
+  ${xt.map(t=>`<line x1="${x(t.t)}" x2="${x(t.t)}" y1="${PT-6}" y2="${bot}" class="v"/><text x="${x(t.t)}" y="${H-8}" text-anchor="middle">${t.l}</text>`).join('')}
+  <text x="${PL}" y="${H-8}" text-anchor="start" class="e">${dShort(P[0].d)}</text><text x="${W-PR}" y="${H-8}" text-anchor="middle" class="e">${dShort(P[L].d)}</text></g>
+  ${goal?`<line x1="${PL}" x2="${W-PR}" y1="${y(goal)}" y2="${y(goal)}" stroke="#9b8f92" stroke-opacity=".7" stroke-dasharray="4 6"/><text x="${PL+8}" y="${y(goal)-8}" fill="#9b8f92" font-size="17">цель ${goal}${unit}</text>`:''}
+  <path class="area" d="${d}L${P[L].x},${bot}L${P[0].x},${bot}Z" fill="url(#${g})"/>
+  <path class="ln" pathLength="1" d="${d}" fill="none" stroke="#E0364F" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  ${P.length<=60?`<g class="dots">${P.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.6"/>`).join('')}</g>`:''}
+  ${lab}
+  <g class="hv" visibility="hidden"><line y1="${PT-6}" y2="${bot}"/><circle r="8"/></g></svg></div>`;
+}
+function chartAt(e){
+  const box=e.target.closest?.('.cbox'),c=box&&CH[box.dataset.ch];
+  if(!c){if(e.type==='pointerdown')document.querySelectorAll('.cbox .hv').forEach(h=>h.setAttribute('visibility','hidden'));return}
+  const svg=box.querySelector('svg'),r=svg.getBoundingClientRect(),vx=(e.clientX-r.left)/r.width*svg.viewBox.baseVal.width;
+  let i=0;c.P.forEach((p,j)=>{if(Math.abs(p.x-vx)<Math.abs(c.P[i].x-vx))i=j});
+  const p=c.P[i],pr=c.P[i-1],hv=svg.querySelector('.hv');
+  hv.setAttribute('visibility','visible');hv.querySelector('line').setAttribute('x1',p.x);hv.querySelector('line').setAttribute('x2',p.x);
+  hv.querySelector('circle').setAttribute('cx',p.x);hv.querySelector('circle').setAttribute('cy',p.y);
+  const dv=pr?p.v-pr.v:0;
+  document.getElementById('rd_'+box.dataset.ch).innerHTML=`<b>${fv(p.v)} ${c.u}</b> · ${fmtDay(p.d,{weekday:'short',day:'numeric',month:'long',year:'numeric'})}${pr?` <span class="mut">· ${dv>0?'+':dv<0?'−':'±'}${fv(Math.abs(dv))} к ${dShort(pr.d)}</span>`:''}`;
+}
+addEventListener('pointerdown',chartAt);
+addEventListener('pointermove',e=>{if(e.target.closest?.('.cbox')&&(e.buttons||e.pointerType==='mouse'))chartAt(e)});
 function bars(items){
   const mx=Math.max(1,...items.map(i=>i.v));
   return `<div class="bars" role="img">${items.map((it,i)=>`<div class="bc ${it.on?'on':''} ${it.v?'':'z'}">
@@ -1107,7 +1171,7 @@ gym(){
   ${recentCard()}`;
 },
 body(){
-  const w=lastWeight(),fw=weights()[0],names=liftNames(),ex=names.includes(S.ui.ex)?S.ui.ex:names[0],hist=ex?exHistory(ex).slice(-30):[];
+  const w=lastWeight(),fw=weights()[0],names=liftNames(),ex=names.includes(S.ui.ex)?S.ui.ex:names[0],full=ex?exHistory(ex):[],hist=full.slice(-30);
   const mk=MEAS.some(m=>m.k===S.ui.mk)?S.ui.mk:'biceps',m=MEAS.find(x=>x.k===mk),mh=measHist(mk);
   const tag=(m,cur,first,unit)=>{const d=cur!=null&&first!=null?r1(cur-first):null,j=d!=null?judge(m.k):null;
     return `<button class="mtag ${m.side} ${j||''}" style="top:${m.y/5}%;${m.side==='l'?'left:1%':'left:77%'}" onclick="openMeas('${m.k}')"><span class="mn">${m.n}</span><b>${cur??'—'}${cur!=null?`<small> ${unit}</small>`:''}</b>${d?`<i class="${JC[j]}">${d>0?'+':''}${d} ${unit}</i>`:''}</button>`};
@@ -1121,15 +1185,15 @@ body(){
   <div class="card" id="mk"><h2>Замеры в динамике</h2>
     <div class="seg">${MEAS.map(x=>`<button class="${x.k===mk?'on':''}" onclick="pick('mk','${x.k}')">${x.n}</button>`).join('')}</div>
     ${mh.length?`<div class="big">${mh.at(-1).v} <small>см · ${m.n.toLowerCase()}</small></div>${mh.length>1?`<div class="sm ${JC[judge(mk)]}">${mh.at(-1).v-mh[0].v>0?'+':''}${r1(mh.at(-1).v-mh[0].v)} см с ${fmtDay(mh[0].d,{day:'numeric',month:'short'})}</div>`:''}`:''}
-    ${line(mh.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:h.v})))}</div>
+    ${line(mh,{unit:' см',key:'meas',id:'meas'})}</div>
   <div class="card"><h2>Прогресс всех замеров</h2>${ov.length?`<div class="ov">${ov.map(o=>`<span>${o.m.n}</span><span class="tr"><i class="${o.j}" style="${o.pc>=0?'left:50%':'right:50%'};width:${Math.abs(o.pc)/mx*50}%;transform-origin:${o.pc>=0?'left':'right'}"></i></span><span class="${JC[o.j]}">${o.b-o.a>0?'+':''}${r1(o.b-o.a)} см · ${o.pc>0?'+':''}${r1(o.pc)}%</span>`).join('')}</div>`:'<p class="empty">Нужно 2 замера.</p>'}</div>
 ${weightCard()}
   <div class="card hot" id="ex"><h2>Силовые показатели</h2>
     ${names.length?`<div class="seg">${names.map(n=>`<button class="${n===ex?'on':''}" onclick="pick('ex',this.textContent)">${esc(n)}</button>`).join('')}</div>
     <div class="row" style="margin-bottom:8px"><div><div class="lbl">Расчётный 1ПМ</div><div class="big">${r1(hist.at(-1).e1)} <small>кг</small></div>${hist.length>1?`<div class="sm ${hist.at(-1).e1>=hist[0].e1?'up':'down'}">${hist.at(-1).e1>=hist[0].e1?'+':''}${r1(hist.at(-1).e1-hist[0].e1)} кг с ${fmtDay(hist[0].d,{day:'numeric',month:'short'})}</div>`:''}</div>
     <div><div class="lbl">Рекорд</div><div class="big">${r1(Math.max(...hist.map(h=>h.e1)))} <small>кг</small></div></div></div>
-    ${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:r1(h.e1)})))}
-    <div class="lbl" style="margin-top:16px">Объём, кг</div>${line(hist.map(h=>({l:fmtDay(h.d,{day:'numeric',month:'short'}),v:h.vol})))}`
+    ${line(full.map(h=>({d:h.d,v:r1(h.e1)})),{unit:' кг',key:'ex',id:'e1'})}
+    <div class="lbl" style="margin-top:16px">Объём, кг</div>${line(full.map(h=>({d:h.d,v:h.vol})),{unit:' кг',key:'ex',id:'vol',seg:false})}`
     :'<p class="empty">Отметь подходы в «Зале».</p>'}</div>`;
 },
 food(){
@@ -1152,12 +1216,12 @@ food(){
 }};
 
 function weightCard(){
-  const st=S.settings,ws=weightStats(),w=weights().slice(-60);
+  const st=S.settings,ws=weightStats(),w=weights();
   return `  <div class="card hot"><h2>Вес тела<span class="sp"></span><span class="chip g">Цель: ${st.goalWeight} кг</span></h2>
     <div class="row" style="margin-bottom:14px"><input id="wIn" inputmode="decimal" placeholder="Вес за ${fmtDay(day,{day:'numeric',month:'short'})}, кг" value="${S.weight[day]??''}" onkeydown="event.key==='Enter'&&setWeight()"><button class="btn-a fit" onclick="setWeight()">Сохранить</button>${S.weight[day]?'<button class="fit" onclick="delWeight()">Удалить</button>':''}</div>
     ${w.length?`<div class="big">${w.at(-1)[1]} <small>кг</small></div>`:''}
     ${ws?`<div class="stats"><span class="chip g"><b class="${(ws.weekly>0)===ws.bulk?'up':'down'}">${ws.weekly>0?'+':''}${r1(ws.weekly)} кг/нед</b> · ${ws.pw>0?'+':''}${r1(ws.pw)}%</span><span class="chip g">${cap(ws.zone)}</span>${ws.eta?`<span class="chip g">До цели ≈ ${ws.eta} нед</span>`:''}</div>`:''}
-    ${line(w.map(([d,v])=>({l:fmtDay(d,{day:'numeric',month:'short'})+` (${v} кг)`,v})),{goal:num(st.goalWeight),unit:' кг'})}</div>`;
+    ${line(w.map(([d,v])=>({d,v})),{goal:num(st.goalWeight),unit:' кг',key:'weight'})}</div>`;
 }
 
 // ---------- body measurements ----------
