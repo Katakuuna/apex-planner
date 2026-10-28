@@ -1599,6 +1599,7 @@ function progCard(){
     <button style="width:100%;margin-bottom:12px" onclick="progAddDay()">+ ${tx('День')}</button>
     ${rulesBlock(progDraft.rules)}
     <div class="row"><button class="btn-a" onclick="progSave()">${tx('Сохранить программу')}</button><button onclick="progDraft=null;render()">${tx('Отмена')}</button></div>
+    ${S.program?`<button style="width:100%;margin-top:8px;color:var(--acc2)" onclick="progDelete()">${tx('Удалить программу')}</button>`:''}
     </div>`;
   const P=S.program;
   if(!P?.days?.length)return `<div class="card" id="prog"><h2>📋 ${tx('Моя программа')}</h2>
