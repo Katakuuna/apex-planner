@@ -311,6 +311,13 @@ button,input,select{min-height:40px}.chk,.x,.set .n,.set input,.seg button,.chip
 .rules dt{font-size:14px;margin-bottom:4px}.rules dd{margin:0}
 .stats{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}.stats .chip{font-size:12px;padding:3px 9px}
 .cmt:not(:focus){max-height:calc(2.8em + 9px);overflow:hidden}
+.pday{padding:0 12px;margin-bottom:8px}.pday[open]{padding-bottom:12px}.pday summary{display:flex;align-items:center;gap:8px;margin:0 -12px;padding:12px 14px;list-style:none;font-size:14px}.pday summary::-webkit-details-marker{display:none}
+.pday summary::after{content:'›';color:var(--mut);font-size:18px;line-height:1;transition:transform .2s}.pday[open] summary::after{transform:rotate(90deg)}
+.pday .pdn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pday[open] summary{margin-bottom:0;border-bottom:.5px solid var(--hair-soft)}
+.pday>.row{margin-top:10px}
+.pex>.row{align-items:flex-start}.pex .t{flex:1;min-width:0}
+.pex>.row{cursor:pointer}.pex .pn{display:block;margin-top:3px;font-size:12.5px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pex .pn.add{color:var(--rose);opacity:.8}
+.pex .cmt{display:none}.pex.open .cmt{display:block}.pex.open .pn{display:none}
 #sci .src-l{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 #sci .row>button:first-child{flex:0 0 auto}
 /* weekly bars: html, so labels keep their size at any width */
@@ -1540,21 +1547,29 @@ const progFromText=(text,name)=>progFromDays(parseProgram(text||''),name);
 function progFromDays(days,name,rules=[],targets=null){
   if(!days.length)return toast(tx('Не нашёл упражнений. Нужна колонка «Упражнение» или каждое упражнение на своей строке, дни — «День 1», «Понедельник:».'));
   days.forEach(d=>d.ex.forEach(e=>e.n=exCanon(e.n)));
-  progDraft={name:name||S.program?.name||tx('Моя программа'),days,rules,targets};
+  progDraft={name:name||S.program?.name||tx('Моя программа'),days,rules,targets};if(days.length===1)progOpen.add(days[0]);
   if(tab!=='gym')go('gym');else render();
   setTimeout(()=>$('#prog')?.scrollIntoView({behavior:'smooth',block:'start'}),50);
   const n=days.reduce((a,d)=>a+d.ex.length,0),c=days.reduce((a,d)=>a+d.ex.filter(e=>e.c).length,0);
   toast(tx('Найдено дней: {0}, упражнений: {1}',days.length,n)+(c?tx(', комментариев: {0}',c):'')+(rules.length?tx(', правил: {0}',rules.length):'')+tx('. Проверь и сохрани.'));
 }
 function progPaste(){$('#progTxtIn').value='';progTxt.showModal()}
-function progEdit(){progDraft=structuredClone(S.program);progDraft.days.forEach(d=>d.ex=exs(d));render()}
+// editor shows days and exercise notes folded; this remembers which ones the user opened
+let progOpen=new WeakSet();
+function progExToggle(i,j,el){
+  const e=progDraft.days[i].ex[j],on=!progOpen.has(e);
+  progOpen[on?'add':'delete'](e);el.classList.toggle('open',on);
+  if(on)el.querySelector('textarea').focus();
+  else{const pn=el.querySelector('.pn');pn.textContent=e.c||'+ '+tx('комментарий');pn.classList.toggle('add',!e.c)}
+}
+function progEdit(){progDraft=structuredClone(S.program);progDraft.days.forEach(d=>d.ex=exs(d));if(progDraft.days.length===1)progOpen.add(progDraft.days[0]);render()}
 function progSave(){
   progDraft.days=progDraft.days.filter(d=>d.ex.length);
   if(!progDraft.days.length)return toast(tx('В программе нет ни одного упражнения'));
   S.program=progDraft;progDraft=null;commit();toast(tx('Программа сохранена'));
 }
 async function progDelete(){if(!await ask(tx('Удалить программу? Записанные тренировки останутся.')))return;S.program=null;S.progDay={};progDraft=null;commit()}
-function progAddDay(){progDraft.days.push({id:uid(),name:tx('День {0}',progDraft.days.length+1),wd:null,ex:[]});render()}
+function progAddDay(){const d={id:uid(),name:tx('День {0}',progDraft.days.length+1),wd:null,ex:[]};progDraft.days.push(d);progOpen.add(d);render()}
 function progDelDay(i){progDraft.days.splice(i,1);render()}
 function progAddEx(i,el){const n=exCanon(el.value.trim());if(!n)return;progDraft.days[i].ex.push({n,c:''});render();$('#pex'+i)?.focus()}
 function progDelEx(i,j){progDraft.days[i].ex.splice(j,1);render()}
@@ -1591,11 +1606,13 @@ function progCard(){
   const wdSel=(v,on)=>`<select class="fit" style="width:auto" onchange="${on}">${[['','Без дня недели'],...WDN].map(([k,n])=>`<option value="${k}" ${String(v??'')===String(k)?'selected':''}>${tx(n)}</option>`).join('')}</select>`;
   if(progDraft)return `<div class="card hot" id="prog"><h2>📋 ${tx('Программа: проверь и сохрани')}</h2>
     <label class="sm mut">${tx('Название')}<input value="${esc(progDraft.name)}" oninput="progDraft.name=this.value" style="margin:4px 0 12px"></label>
-    ${progDraft.days.map((d,i)=>`<div class="pday"><div class="row"><input value="${esc(d.name)}" oninput="progDraft.days[${i}].name=this.value" style="flex:2 1 160px" aria-label="${tx('Название дня')}">
-      ${wdSel(d.wd,`progDraft.days[${i}].wd=this.value===''?null:+this.value`)}<button class="x fit" onclick="progDelDay(${i})" aria-label="${tx('Удалить день')}">×</button></div>
-      <div class="pex-list">${d.ex.map((e,j)=>`<div class="pex"><div class="row" style="flex-wrap:nowrap"><span class="t">${esc(exLabel(e.n))} <span class="chip g">${esc(tx(e.g?normG(e.g):groupOf(e.n)))}</span></span><button class="x fit" onclick="progDelEx(${i},${j})" aria-label="${tx('Убрать')}">×</button></div>
+    ${progDraft.days.map((d,i)=>`<details class="pday" ${progOpen.has(d)?'open':''} ontoggle="progOpen[this.open?'add':'delete'](progDraft.days[${i}])">
+      <summary><span class="pdn">${esc(d.name)}</span>${d.wd!=null?`<span class="chip g">${tx(WDN.find(w=>w[0]===d.wd)?.[1]||'')}</span>`:''}<span class="sm mut fit">${tx('{0} упр.',d.ex.length)}</span></summary>
+      <div class="row" style="flex-wrap:nowrap"><input value="${esc(d.name)}" oninput="progDraft.days[${i}].name=this.value;this.closest('.pday').querySelector('.pdn').textContent=this.value" style="flex:1 1 0;min-width:0" aria-label="${tx('Название дня')}">
+      ${wdSel(d.wd,`progDraft.days[${i}].wd=this.value===''?null:+this.value;render()`)}<button class="x fit" onclick="progDelDay(${i})" aria-label="${tx('Удалить день')}">×</button></div>
+      <div class="pex-list">${d.ex.map((e,j)=>`<div class="pex${progOpen.has(e)?' open':''}"><div class="row" style="flex-wrap:nowrap" onclick="progExToggle(${i},${j},this.parentNode)"><span class="t">${esc(exLabel(e.n))} <span class="chip g">${esc(tx(e.g?normG(e.g):groupOf(e.n)))}</span><span class="pn${e.c?'':' add'}">${e.c?esc(e.c):'+ '+tx('комментарий')}</span></span><button class="x fit" onclick="event.stopPropagation();progDelEx(${i},${j})" aria-label="${tx('Убрать')}">×</button></div>
         <textarea class="cmt" rows="1" placeholder="${tx('Комментарий к упражнению')}" oninput="progDraft.days[${i}].ex[${j}].c=this.value">${esc(e.c)}</textarea></div>`).join('')||`<span class="sm mut">${tx('Нет упражнений')}</span>`}</div>
-      <input id="pex${i}" list="exList" placeholder="${tx('+ Добавить упражнение и Enter')}" onkeydown="event.key==='Enter'&&progAddEx(${i},this)"></div>`).join('')}
+      <input id="pex${i}" list="exList" placeholder="${tx('+ Добавить упражнение и Enter')}" onkeydown="event.key==='Enter'&&progAddEx(${i},this)"></details>`).join('')}
     <button style="width:100%;margin-bottom:12px" onclick="progAddDay()">+ ${tx('День')}</button>
     ${rulesBlock(progDraft.rules)}
     <div class="row"><button class="btn-a" onclick="progSave()">${tx('Сохранить программу')}</button><button onclick="progDraft=null;render()">${tx('Отмена')}</button></div>
