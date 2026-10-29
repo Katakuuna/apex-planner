@@ -179,7 +179,7 @@ const EN={
   'Не нашёл упражнений. Нужна колонка «Упражнение» или каждое упражнение на своей строке, дни — «День 1», «Понедельник:».':'No exercises found. Use an “Exercise” column or one exercise per line, with days like “Day 1” or “Monday:”.',
   'Моя программа':'My program','Найдено дней: {0}, упражнений: {1}':'Found days: {0}, exercises: {1}',', комментариев: {0}':', comments: {0}',', правил: {0}':', rules: {0}',
   '. Проверь и сохрани.':'. Check and save.','В программе нет ни одного упражнения':'The program has no exercises','Программа сохранена':'Program saved',
-  'Удалить программу? Записанные тренировки останутся.':'Delete the program? Logged workouts stay.','Удалить программу':'Delete program','Правила программы':'Program rules',
+  'Удалить программу? Записанные тренировки останутся.':'Delete the program? Logged workouts stay.','Удалить программу':'Delete program','{0} упр.':'{0} ex.','комментарий':'comment','Правила программы':'Program rules',
   'Без дня недели':'No weekday','Пн':'Mon','Вт':'Tue','Ср':'Wed','Чт':'Thu','Пт':'Fri','Сб':'Sat','Вс':'Sun',
   'Программа: проверь и сохрани':'Program: check and save','Название':'Name','Название дня':'Day name','Удалить день':'Delete day','Убрать':'Remove',
   'Комментарий к упражнению':'Exercise comment','Нет упражнений':'No exercises','+ Добавить упражнение и Enter':'+ Add exercise and press Enter',
