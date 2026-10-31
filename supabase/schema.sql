@@ -59,3 +59,16 @@ create policy "lifts: delete own" on public.lifts
 
 -- Live sync between the user's devices
 alter publication supabase_realtime add table public.user_state;
+
+
+-- Claude connector keys (the same SQL is in claude-connector.sql, for projects set up before it existed)
+-- Only the SHA-256 of a key is stored; the app makes the key, the function looks the user up by its hash.
+create table if not exists public.mcp_tokens (
+  user_id    uuid primary key default auth.uid() references auth.users on delete cascade,
+  token_hash text not null unique check (char_length(token_hash) = 64),
+  created_at timestamptz not null default now()
+);
+alter table public.mcp_tokens enable row level security;
+drop policy if exists "mcp_tokens: own only" on public.mcp_tokens;
+create policy "mcp_tokens: own only" on public.mcp_tokens
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());

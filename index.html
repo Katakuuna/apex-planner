@@ -536,7 +536,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&cloud){cle
 // ---------- Supabase (installed app / website): account, sync between devices, leaderboard ----------
 // The anon key is public by design; every table is protected by row-level security (see supabase/schema.sql).
 const SB_URL='https://ezbpjzgvvvrdmjdljphf.supabase.co',SB_KEY='sb_publishable_5DK_a9DhoPMpTG9rU6cMDA_BkvIzK5D';
-let sb=null,sbUser=null,profile=null,sbChan=null,acMode='in';
+let sb=null,sbUser=null,profile=null,sbChan=null,acMode='in',mcpOn=false,mcpUrl='';
 const sbq=async q=>{const {data,error}=await q;if(error)throw error;return data};
 function sbInit(){
   if(!SB_URL||location.hostname.endsWith('claude.ai')||location.protocol==='file:')return;
@@ -575,6 +575,7 @@ async function sbStart(user){
       del:doc=>sbq(sb.from('user_state').delete().eq('user_id',user.id).eq('doc',doc)),
     };
     await loadProfile();
+    mcpCheck();
     await pushCloud();
     sbChan=sb.channel('state-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'user_state',filter:'user_id=eq.'+user.id},p=>{
       const doc=p.new?.doc||p.old?.doc,v=p.eventType==='DELETE'?undefined:p.new.data,j=v===undefined?undefined:canon(v);
@@ -612,7 +613,7 @@ async function sbAuth(mode){
 async function sbOut(){
   if(!await ask(tx('Выйти из аккаунта? Данные останутся на этом устройстве.')))return;
   await pushCloud();sbChan?.unsubscribe();await sb.auth.signOut();
-  sbUser=profile=cloud=null;written={};S.ui.syncedUser=null;localSave();setSync('');renderAccount();render();
+  sbUser=profile=cloud=null;mcpOn=false;mcpUrl='';written={};S.ui.syncedUser=null;localSave();setSync('');renderAccount();render();
 }
 async function saveProfile(){
   const username=$('#acName').value.trim(),pub=$('#acPub').checked;
@@ -627,12 +628,35 @@ function renderAccount(){
   el.innerHTML=sbUser?`<div class="sm mut" style="margin-bottom:8px">☁︎ ${esc(sbUser.email)}</div>
     <label>${tx('Имя в рейтинге')}<input id="acName" value="${esc(profile?.username||'')}" maxlength="24"></label>
     <label style="display:flex;gap:8px;align-items:center;color:var(--txt)"><input id="acPub" type="checkbox" style="width:auto" ${profile?.public!==false?'checked':''}>${tx('Показывать меня в таблице лидеров')}</label>
-    <div class="row"><button class="btn-a" onclick="saveProfile()">${tx('Сохранить профиль')}</button><button onclick="sbOut()">${tx('Выйти')}</button></div>`
+    <div class="row"><button class="btn-a" onclick="saveProfile()">${tx('Сохранить профиль')}</button><button onclick="sbOut()">${tx('Выйти')}</button></div>
+    <div class="lbl" style="margin-top:12px">Claude</div>
+    <div class="sm mut" style="margin-bottom:8px">${tx('Подключи Claude в claude.ai, и он будет ставить задачи, напоминания и программу тренировок по твоей просьбе в чате.')}</div>
+    ${mcpUrl?`<input id="mcpUrl" readonly value="${esc(mcpUrl)}" onclick="this.select()">
+    <div class="row" style="margin-top:6px"><button class="btn-a" onclick="mcpCopy()">${tx('Скопировать ссылку')}</button></div>
+    <div class="sm mut" style="margin-top:6px">${tx('Ссылка показывается один раз, это ключ к твоим данным. В claude.ai: Настройки → Коннекторы → Добавить свой коннектор, вставь ссылку в поле URL.')}</div>`
+    :`<div class="row"><button class="btn-a" onclick="mcpLink()">${mcpOn?tx('Новая ссылка'):tx('Подключить Claude')}</button>${mcpOn?`<button onclick="mcpOff()">${tx('Отключить')}</button>`:''}</div>
+    ${mcpOn?`<div class="sm mut" style="margin-top:6px">${tx('Claude подключён. Новая ссылка отключит старую.')}</div>`:''}`}`
   :`<div class="sm mut" style="margin-bottom:8px">${tx('Синхронизация между устройствами и таблица лидеров.')}</div>
     <form onsubmit="event.preventDefault();sbAuth(acMode)">
     <label>${tx('Почта')}<input id="acEmail" type="email" name="email" autocomplete="username" inputmode="email" autocapitalize="off" required></label>
     <label>${tx('Пароль')}<input id="acPass" type="password" name="password" autocomplete="${acMode==='up'?'new-password':'current-password'}" minlength="6" required></label>
     <div class="row"><button class="btn-a" type="submit">${acMode==='up'?tx('Создать аккаунт'):tx('Войти')}</button><button type="button" onclick="acMode=acMode==='up'?'in':'up';renderAccount()">${acMode==='up'?tx('У меня есть аккаунт'):tx('Создать аккаунт')}</button></div></form>`;
+}
+
+// Claude connector (supabase/functions/apex-mcp): a personal key in the connector URL; only its SHA-256 is stored
+async function mcpCheck(){try{mcpOn=!!(await sbq(sb.from('mcp_tokens').select('user_id').eq('user_id',sbUser.id))).length;renderAccount()}catch{}}
+async function mcpLink(){
+  if(mcpOn&&!await ask(tx('Сделать новую ссылку? Старая перестанет работать, её нужно будет заменить в claude.ai.')))return;
+  const key=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(24)))).replace(/[+/=]/g,c=>({'+':'-','/':'_','=':''}[c]));
+  const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(key)))].map(x=>x.toString(16).padStart(2,'0')).join('');
+  try{await sbq(sb.from('mcp_tokens').upsert({user_id:sbUser.id,token_hash:hash,created_at:new Date().toISOString()}))}
+  catch(e){return toast(e.code==='42P01'||e.code==='PGRST205'?tx('Коннектор ещё не настроен в Supabase (supabase/claude-connector.sql)'):tx('Ошибка: {0}',e.message))}
+  mcpOn=true;mcpUrl=SB_URL+'/functions/v1/apex-mcp?key='+key;renderAccount();
+}
+async function mcpCopy(){try{await navigator.clipboard.writeText(mcpUrl);toast(tx('Ссылка скопирована'))}catch{$('#mcpUrl').select()}}
+async function mcpOff(){
+  if(!await ask(tx('Отключить Claude от планера?')))return;
+  try{await sbq(sb.from('mcp_tokens').delete().eq('user_id',sbUser.id));mcpOn=false;mcpUrl='';renderAccount();toast(tx('Claude отключён'))}catch(e){toast(tx('Ошибка: {0}',e.message))}
 }
 
 // leaderboard: each user publishes only their best set per exercise + weekly volume

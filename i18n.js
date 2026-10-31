@@ -119,6 +119,13 @@ const EN={
   'Имя в рейтинге':'Leaderboard name','Показывать меня в таблице лидеров':'Show me on the leaderboard','Сохранить профиль':'Save profile','Выйти':'Sign out',
   'Синхронизация между устройствами и таблица лидеров.':'Sync between devices and a leaderboard.','Почта':'Email','Пароль':'Password',
   'Создать аккаунт':'Create account','Войти':'Sign in','У меня есть аккаунт':'I have an account',
+  'Подключи Claude в claude.ai, и он будет ставить задачи, напоминания и программу тренировок по твоей просьбе в чате.':'Connect Claude in claude.ai and it will add tasks, reminders and your training program when you ask in chat.',
+  'Скопировать ссылку':'Copy link','Ссылка скопирована':'Link copied','Подключить Claude':'Connect Claude','Новая ссылка':'New link','Отключить':'Disconnect',
+  'Ссылка показывается один раз, это ключ к твоим данным. В claude.ai: Настройки → Коннекторы → Добавить свой коннектор, вставь ссылку в поле URL.':'The link is shown once and is a key to your data. In claude.ai: Settings → Connectors → Add custom connector, paste the link into the URL field.',
+  'Claude подключён. Новая ссылка отключит старую.':'Claude is connected. A new link turns off the old one.',
+  'Сделать новую ссылку? Старая перестанет работать, её нужно будет заменить в claude.ai.':'Make a new link? The old one stops working and has to be replaced in claude.ai.',
+  'Коннектор ещё не настроен в Supabase (supabase/claude-connector.sql)':'The connector is not set up in Supabase yet (supabase/claude-connector.sql)',
+  'Отключить Claude от планера?':'Disconnect Claude from the planner?','Claude отключён':'Claude disconnected',
   // leaderboard
   'Лидеры':'Leaderboard','Войти, чтобы участвовать':'Sign in to take part','Загружаю…':'Loading…','Упражнение':'Exercise',
   '1ПМ':'1RM','÷ вес':'÷ weight','Неделя':'Week','Свернуть':'Show less','Все {0}':'All {0}','Пока пусто':'Nothing yet',
